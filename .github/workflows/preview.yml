@@ -85,8 +85,9 @@ jobs:
           VHS_VERSION="v0.7.2"
           wget "https://github.com/charmbracelet/vhs/releases/download/${VHS_VERSION}/vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
           tar -xzf "vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
-          sudo mv vhs /usr/local/bin/vhs
-          chmod +x /usr/local/bin/vhs
+          cd "vhs_${VHS_VERSION#v}_Linux_x86_64"
+          chmod +x vhs
+          sudo cp vhs /usr/local/bin/vhs
           vhs --version
 
       - name: Generate preview with VHS
