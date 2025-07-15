@@ -3,23 +3,18 @@
 . ../../common-script.sh
 
 installZoom() {
-    if ! command_exists us.zoom.Zoom && ! command_exists zoom; then
+    if ! brewprogram_exists zoom; then
         printf "%b\n" "${YELLOW}Installing Zoom...${RC}"
-        case "$PACKAGER" in
-            pacman)
-                "$AUR_HELPER" -S --needed --noconfirm zoom
-                ;;
-            *)
-                checkFlatpak
-                flatpak install -y flathub us.zoom.Zoom
-                ;;
-        esac
+        brew install --cask zoom
+        if [ $? -ne 0 ]; then
+            printf "%b\n" "${RED}Failed to install Zoom. Please check your Homebrew installation or try again later.${RC}"
+            exit 1
+        fi
+        printf "%b\n" "${GREEN}Zoom installed successfully!${RC}"
     else
         printf "%b\n" "${GREEN}Zoom is already installed.${RC}"
     fi
 }
 
 checkEnv
-checkEscalationTool
-checkAURHelper
 installZoom

@@ -1,81 +1,27 @@
 #!/bin/sh -e
 
 . ../common-script.sh
-. ../common-service-script.sh
 
 cleanup_system() {
     printf "%b\n" "${YELLOW}Performing system cleanup...${RC}"
-    case "$PACKAGER" in
-        apt-get|nala)
-            "$ESCALATION_TOOL" "$PACKAGER" clean
-            "$ESCALATION_TOOL" "$PACKAGER" autoremove -y 
-            "$ESCALATION_TOOL" du -h /var/cache/apt
-            ;;
-        zypper)
-            "$ESCALATION_TOOL" "$PACKAGER" clean --all
-            "$ESCALATION_TOOL" "$PACKAGER" packages --unneeded
-            ;;
-        dnf)
-            "$ESCALATION_TOOL" "$PACKAGER" clean all
-            "$ESCALATION_TOOL" "$PACKAGER" autoremove -y
-            ;;
-        pacman)
-            "$ESCALATION_TOOL" "$PACKAGER" -Sc --noconfirm
-            # shellcheck disable=2046
-            "$ESCALATION_TOOL" "$PACKAGER" -Rns $(pacman -Qtdq) --noconfirm > /dev/null || true
-            ;;
-        apk)
-            "$ESCALATION_TOOL" "$PACKAGER" cache clean
-            ;;
-        xbps-install)
-            "$ESCALATION_TOOL" xbps-remove -Ooy
-            ;;
-        eopkg)
-            "$ESCALATION_TOOL" "$PACKAGER" -y remove-orphans
-            ;;
-        *)
-            printf "%b\n" "${RED}Unsupported package manager: ${PACKAGER}. Skipping.${RC}"
-            ;;
-    esac
-}
+    # Fix Missions control to NEVER rearrange spaces
+    printf "%b\n" "${CYAN}Fixing Mission Control to never rearrange spaces...${RC}"
+    $ESCALATION_TOOL defaults write com.apple.dock mru-spaces -bool false
 
-common_cleanup() {
-    if [ -d /var/tmp ]; then
-        "$ESCALATION_TOOL" find /var/tmp -type f -atime +5 -delete
-    fi
-    if [ -d /tmp ]; then
-        "$ESCALATION_TOOL" find /tmp -type f -atime +5 -delete
-    fi
-    if [ -d /var/log ]; then
-        "$ESCALATION_TOOL" find /var/log -type f -name "*.log" -exec truncate -s 0 {} \;
-    fi
-    if [ "$INIT_MANAGER" = "systemctl" ]; then
-        "$ESCALATION_TOOL" journalctl --vacuum-time=3d
-    fi
-}
+    # Apple Intelligence Crap
+    $ESCALATION_TOOL defaults write com.apple.CloudSubscriptionFeatures.optIn "545129924" -bool "false"
 
-clean_data() {
-    printf "%b" "${YELLOW}Clean up old cache files and empty the trash? (y/N): ${RC}"
-    read -r clean_response
-    case $clean_response in
-        y|Y)
-            printf "%b\n" "${YELLOW}Cleaning up old cache files and emptying trash...${RC}"
-            if [ -d "$HOME/.cache" ]; then
-                find "$HOME/.cache/" -type f -atime +5 -delete
-            fi
-            if [ -d "$HOME/.local/share/Trash" ]; then
-                find "$HOME/.local/share/Trash" -mindepth 1 -delete
-            fi
-            printf "%b\n" "${GREEN}Cache and trash cleanup completed.${RC}"
-            ;;
-        *)
-            printf "%b\n" "${YELLOW}Skipping cache and trash cleanup.${RC}"
-            ;;
-    esac
+    # Empty Trash
+    printf "%b\n" "${CYAN}Emptying Trash...${RC}"
+    $ESCALATION_TOOL rm -rf ~/.Trash/*
+
+    # Remove old log files
+    printf "%b\n" "${CYAN}Removing old log files...${RC}"
+    find /var/log -type f -name "*.log" -mtime +30 -exec $ESCALATION_TOOL rm -f {} \;
+    find /var/log -type f -name "*.old" -mtime +30 -exec $ESCALATION_TOOL rm -f {} \;
+    find /var/log -type f -name "*.err" -mtime +30 -exec $ESCALATION_TOOL rm -f {} \;
+    
 }
 
 checkEnv
-checkEscalationTool
 cleanup_system
-common_cleanup
-clean_data

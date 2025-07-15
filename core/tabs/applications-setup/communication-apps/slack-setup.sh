@@ -3,23 +3,18 @@
 . ../../common-script.sh
 
 installSlack() {
-    if ! command_exists com.slack.Slack && ! command_exists slack; then
+    if ! brewprogram_exists slack; then
         printf "%b\n" "${YELLOW}Installing Slack...${RC}"
-        case "$PACKAGER" in
-            pacman)
-                "$AUR_HELPER" -S --needed --noconfirm slack-desktop
-                ;;
-            *)  
-                checkFlatpak
-                flatpak install -y flathub com.slack.Slack
-                ;;
-        esac
+        brew install --cask slack
+        if [ $? -ne 0 ]; then
+            printf "%b\n" "${RED}Failed to install Slack. Please check your Homebrew installation or try again later.${RC}"
+            exit 1
+        fi
+        printf "%b\n" "${GREEN}Slack installed successfully!${RC}"
     else
         printf "%b\n" "${GREEN}Slack is already installed.${RC}"
     fi
 }
 
 checkEnv
-checkEscalationTool
-checkAURHelper
 installSlack

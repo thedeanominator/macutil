@@ -3,14 +3,18 @@
 . ../../common-script.sh
 
 installBrave() {
-    if ! command_exists com.brave.Browser && ! command_exists brave; then
+    if ! brewprogram_exists brave-browser; then
         printf "%b\n" "${YELLOW}Installing Brave...${RC}"
-        curl -fsS https://dl.brave.com/install.sh | sh
+        brew install --cask brave-browser
+        if [ $? -ne 0 ]; then
+            printf "%b\n" "${RED}Failed to install Brave Browser. Please check your Homebrew installation or try again later.${RC}"
+            exit 1
+        fi
+        printf "%b\n" "${GREEN}Brave Browser installed successfully!${RC}"
     else
         printf "%b\n" "${GREEN}Brave Browser is already installed.${RC}"
     fi
 }
 
 checkEnv
-checkEscalationTool
 installBrave

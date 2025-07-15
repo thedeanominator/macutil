@@ -3,37 +3,18 @@
 . ../../common-script.sh
 
 installFirefox() {
-    if ! command_exists firefox; then
+    if ! brewprogram_exists firefox; then
         printf "%b\n" "${YELLOW}Installing Mozilla Firefox...${RC}"
-        case "$PACKAGER" in
-            apt-get|nala)
-                "$ESCALATION_TOOL" "$PACKAGER" install -y firefox-esr
-                ;;
-            zypper)
-                "$ESCALATION_TOOL" "$PACKAGER" --non-interactive install MozillaFirefox
-                ;;
-            pacman)
-                "$ESCALATION_TOOL" "$PACKAGER" -S --needed --noconfirm firefox
-                ;;
-            dnf|eopkg)
-                "$ESCALATION_TOOL" "$PACKAGER" -y install firefox
-                ;;
-            xbps-install)
-                "$ESCALATION_TOOL" "$PACKAGER" -Sy firefox
-                ;;
-            apk)
-                "$ESCALATION_TOOL" "$PACKAGER" add firefox
-                ;;
-            *)
-                printf "%b\n" "${RED}Unsupported package manager: ""$PACKAGER""${RC}"
-                exit 1
-                ;;
-        esac
+        brew install --cask firefox
+        if [ $? -ne 0 ]; then
+            printf "%b\n" "${RED}Failed to install Firefox Browser. Please check your Homebrew installation or try again later.${RC}"
+            exit 1
+        fi
+        printf "%b\n" "${GREEN}Firefox Browser installed successfully!${RC}"
     else
         printf "%b\n" "${GREEN}Firefox Browser is already installed.${RC}"
     fi
 }
 
 checkEnv
-checkEscalationTool
 installFirefox

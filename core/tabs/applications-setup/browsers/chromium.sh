@@ -3,27 +3,18 @@
 . ../../common-script.sh
 
 installChromium() {
-if ! command_exists chromium; then
+if ! brewprogram_exists chromium; then
     printf "%b\n" "${YELLOW}Installing Chromium...${RC}"
-    case "$PACKAGER" in
-        pacman)
-            "$ESCALATION_TOOL" "$PACKAGER" -S --needed --noconfirm chromium
-            ;;
-        apk)
-            "$ESCALATION_TOOL" "$PACKAGER" add chromium
-            ;;
-        xbps-install)
-            "$ESCALATION_TOOL" "$PACKAGER" -Sy chromium
-            ;;
-        *)
-            "$ESCALATION_TOOL" "$PACKAGER" install -y chromium
-            ;;
-    esac
+    brew install --cask chromium
+    if [ $? -ne 0 ]; then
+        printf "%b\n" "${RED}Failed to install Chromium Browser. Please check your Homebrew installation or try again later.${RC}"
+        exit 1
+    fi
+    printf "%b\n" "${GREEN}Chromium Browser installed successfully!${RC}"
 else
     printf "%b\n" "${GREEN}Chromium Browser is already installed.${RC}"
 fi
 }
 
 checkEnv
-checkEscalationTool
 installChromium

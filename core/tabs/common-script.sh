@@ -15,6 +15,13 @@ done
 return 0
 }
 
+brewprogram_exists() {
+for cmd in "$@"; do
+    brew list "$cmd" >/dev/null 2>&1 || return 1
+done
+return 0
+}
+
 checkCommandRequirements() {
     ## Check for requirements.
     REQUIREMENTS=$1
@@ -32,6 +39,12 @@ checkPackageManager() {
         printf "%b\n" "${GREEN}Homebrew is installed${RC}"
     else
         printf "%b\n" "${RED}Homebrew is not installed${RC}"
+        printf "%b\n" "${YELLOW}Installing Homebrew...${RC}"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if [ $? -ne 0 ]; then
+            printf "%b\n" "${RED}Failed to install Homebrew${RC}"
+            exit 1
+        fi
     fi
 }
 

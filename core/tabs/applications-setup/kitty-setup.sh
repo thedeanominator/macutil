@@ -3,22 +3,13 @@
 . ../common-script.sh
 
 installKitty() {
-    if ! command_exists kitty; then
-        printf "%b\n" "${YELLOW}Installing Kitty...${RC}"
-        case "$PACKAGER" in
-            pacman)
-                "$ESCALATION_TOOL" "$PACKAGER" -S --needed --noconfirm kitty
-                ;;
-            apk)
-                "$ESCALATION_TOOL" "$PACKAGER" add kitty
-                ;;
-            xbps-install)
-                "$ESCALATION_TOOL" "$PACKAGER" -Sy kitty
-                ;;
-            *)
-                "$ESCALATION_TOOL" "$PACKAGER" install -y kitty
-                ;;
-        esac
+    if ! brewprogram_exists kitty; then
+        brew install --cask kitty
+        if [ $? -ne 0 ]; then
+            printf "%b\n" "${RED}Failed to install Kitty. Please check your Homebrew installation or try again later.${RC}"
+            exit 1
+        fi
+        printf "%b\n" "${GREEN}Kitty installed successfully!${RC}"
     else
         printf "%b\n" "${GREEN}Kitty is already installed.${RC}"
     fi
@@ -35,6 +26,5 @@ setupKittyConfig() {
 }
 
 checkEnv
-checkEscalationTool
 installKitty
 setupKittyConfig
