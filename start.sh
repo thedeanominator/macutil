@@ -18,19 +18,8 @@ check() {
     unset message
 }
 
-findArch() {
-    case "$(uname -m)" in
-        x86_64|amd64) arch="x86_64" ;;
-        aarch64|arm64) arch="aarch64" ;;
-        *) check 1 "Unsupported architecture"
-    esac
-}
-
 getUrl() {
-    case "${arch}" in
-        x86_64) echo "https://github.com/ChrisTitusTech/macutil/releases/latest/download/macutil";;
-        *) echo "https://github.com/ChrisTitusTech/macutil/releases/latest/download/macutil-${arch}";;
-    esac
+    echo "https://github.com/ChrisTitusTech/macutil/releases/latest/download/macutil"
 }
 
 findArch
