@@ -74,18 +74,20 @@ jobs:
           branch_name=$(echo "${{ steps.final_tag.outputs.tag_name }}" | tr . -)
           echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
 
-      - name: Install dependencies manually
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg ttyd curl
 
-      - name: Install VHS directly
+      - name: Install VHS binary
         run: |
-          # Download and install VHS from releases
-          curl -LO "https://github.com/charmbracelet/vhs/releases/latest/download/vhs_Linux_x86_64.tar.gz"
-          tar -xzf vhs_Linux_x86_64.tar.gz
+          # Download a specific version of VHS
+          VHS_VERSION="v0.7.2"
+          wget "https://github.com/charmbracelet/vhs/releases/download/${VHS_VERSION}/vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
+          tar -xzf "vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
           sudo mv vhs /usr/local/bin/vhs
           chmod +x /usr/local/bin/vhs
+          vhs --version
 
       - name: Generate preview with VHS
         run: |
