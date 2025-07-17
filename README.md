@@ -1,8 +1,7 @@
-# Chris Titus Tech's Linux Utility
+# Chris Titus Tech's MacOS Utility
 
 [![Version](https://img.shields.io/github/v/release/ChrisTitusTech/macutil?color=%230567ff&label=Latest%20Release&style=for-the-badge)](https://github.com/ChrisTitusTech/macutil/releases/latest)
 ![GitHub Downloads (specific asset, all releases)](https://img.shields.io/github/downloads/ChrisTitusTech/macutil/macutil?label=Total%20Downloads&style=for-the-badge)
-[![](https://dcbadge.limes.pink/api/server/https://discord.gg/bujFYKAHSp)](https://discord.gg/bujFYKAHSp)
 
 <!-- TODO: crates.io package here + <br> -->
 [![Crates.io Version](https://img.shields.io/crates/v/macutil_tui?style=for-the-badge&color=%23af3a03)](https://crates.io/crates/macutil_tui) [![macutil AUR Version](https://img.shields.io/aur/version/macutil?style=for-the-badge&label=%5BAUR%5D%20macutil&color=%23230567ff)](https://aur.archlinux.org/packages/macutil) [![macutil-bin AUR Version](https://img.shields.io/aur/version/macutil-bin?style=for-the-badge&label=%5BAUR%5D%20macutil-bin&color=%23230567ff)](https://aur.archlinux.org/packages/macutil-bin)
@@ -18,11 +17,11 @@
 To get started, pick which branch you would like to use, then run the command in your terminal:
 ### Stable Branch (Recommended)
 ```bash
-curl -fsSL https://christitus.com/linux | sh
+curl -fsSL https://christitus.com/mac | sh
 ```
-### Dev branch
+### Dev branch not setup
 ```bash
-curl -fsSL https://christitus.com/linuxdev | sh
+
 ```
 
 ### CLI arguments
@@ -36,52 +35,13 @@ macutil --help
 For installer options:
 
 ```bash
-curl -fsSL https://christitus.com/linux | sh -s -- --help
+curl -fsSL https://christitus.com/mac | sh -s -- --help
 ```
 
 ## ⬇️ Installation
 
 macutil is also available as a package in various repositories:
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/macutil.svg)](https://repology.org/project/macutil/versions)
-
-<details>
-  <summary>Arch Linux</summary>
-
-macutil can be installed on [Arch Linux](https://archlinux.org) with three different [AUR](https://aur.archlinux.org) packages:
-
-- `macutil` - Stable release compiled from source
-- `macutil-bin` - Stable release pre-compiled
-- `macutil-git` - Compiled from the last commit (not recommended)
-
-by running:
-
-```bash
-git clone https://aur.archlinux.org/<package>.git
-cd <package>
-makepkg -si
-```
-
-Replace `<package>` with your preferred package.
-
-If you use [yay](https://github.com/Jguer/yay), [paru](https://github.com/Morganamilo/paru) or any other [AUR Helper](https://wiki.archlinux.org/title/AUR_helpers), it's even simpler:
-
-```bash
-paru -S macutil
-```
-
-Replace `paru` with your preferred helper and `macutil` with your preferred package.
-
-</details>
-<details>
-  <summary>OpenSUSE</summary>
-  
-macutil can be installed on OpenSUSE with:
-```bash
-sudo zypper install macutil
-```
-
-</details>
 <details>
   <summary>Cargo</summary>
 
