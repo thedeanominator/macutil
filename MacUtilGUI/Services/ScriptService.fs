@@ -137,7 +137,7 @@ module ScriptService =
         
         allCategories
     
-    let runScript (scriptInfo: ScriptInfo) : unit =
+    let runScript (scriptInfo: ScriptInfo) : string =
         try
             let startInfo = ProcessStartInfo()
             startInfo.FileName <- "/bin/bash"
@@ -145,14 +145,31 @@ module ScriptService =
                                            (Path.GetDirectoryName(scriptInfo.FullPath))
                                            (Path.GetFileName(scriptInfo.FullPath))
                                            (Path.GetFileName(scriptInfo.FullPath))
-            startInfo.UseShellExecute <- true
-            startInfo.CreateNoWindow <- false
+            startInfo.UseShellExecute <- false
+            startInfo.CreateNoWindow <- true
+            startInfo.RedirectStandardOutput <- true
+            startInfo.RedirectStandardError <- true
             
             let proc = Process.Start(startInfo)
             if proc <> null then
-                printfn "Started script: %s" scriptInfo.Name
+                let output = proc.StandardOutput.ReadToEnd()
+                let error = proc.StandardError.ReadToEnd()
+                proc.WaitForExit()
+                
+                let fullOutput = 
+                    if String.IsNullOrEmpty(error) then
+                        output
+                    else
+                        sprintf "%s\n--- ERRORS ---\n%s" output error
+                
+                printfn "Executed script: %s (Exit Code: %d)" scriptInfo.Name proc.ExitCode
+                fullOutput
             else
-                printfn "Failed to start script: %s" scriptInfo.Name
+                let errorMsg = sprintf "Failed to start script: %s" scriptInfo.Name
+                printfn "%s" errorMsg
+                errorMsg
         with
         | ex ->
-            printfn "Error running script %s: %s" scriptInfo.Name ex.Message
+            let errorMsg = sprintf "Error running script %s: %s" scriptInfo.Name ex.Message
+            printfn "%s" errorMsg
+            errorMsg

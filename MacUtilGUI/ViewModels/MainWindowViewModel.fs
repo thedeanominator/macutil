@@ -2,6 +2,7 @@ namespace MacUtilGUI.ViewModels
 
 open System.Collections.ObjectModel
 open System.Windows.Input
+open Avalonia.Threading
 open MacUtilGUI.Models
 open MacUtilGUI.Services
 
@@ -20,13 +21,16 @@ type MainWindowViewModel() as this =
     inherit ViewModelBase()
     
     let mutable selectedScript: ScriptInfo option = None
+    let mutable scriptOutput: string = ""
     let categories = ObservableCollection<ScriptCategory>()
     
     let selectScriptCommand = RelayCommand(fun parameter ->
         match parameter with
         | :? ScriptInfo as script -> 
             selectedScript <- Some script
+            scriptOutput <- ""  // Clear previous output
             this.OnPropertyChanged("SelectedScript")
+            this.OnPropertyChanged("ScriptOutput")
             this.OnPropertyChanged("CanRunScript")
             this.OnPropertyChanged("SelectedScriptName")
             this.OnPropertyChanged("SelectedScriptDescription")
@@ -36,7 +40,19 @@ type MainWindowViewModel() as this =
     
     let runScriptCommand = RelayCommand(fun _ -> 
         match selectedScript with
-        | Some script -> ScriptService.runScript script
+        | Some script -> 
+            scriptOutput <- "Running script..."
+            this.OnPropertyChanged("ScriptOutput")
+            
+            // Run script in background to avoid blocking UI
+            async {
+                let output = ScriptService.runScript script
+                // Update UI on the UI thread
+                Dispatcher.UIThread.InvokeAsync(fun () ->
+                    scriptOutput <- output
+                    this.OnPropertyChanged("ScriptOutput")
+                ) |> ignore
+            } |> Async.Start
         | None -> ())
     
     do
@@ -48,6 +64,8 @@ type MainWindowViewModel() as this =
     member _.Categories = categories
     
     member _.SelectedScript = selectedScript
+    
+    member _.ScriptOutput = scriptOutput
     
     member _.SelectedScriptName = 
         match selectedScript with

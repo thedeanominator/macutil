@@ -66,61 +66,91 @@
                 </ScrollViewer>
             </Border>
             
-            <!-- Right Panel - Script Details -->
-            <Border Grid.Column="1" 
-                    BorderBrush="Gray" 
-                    BorderThickness="1" 
-                    CornerRadius="5" 
-                    Margin="10,0,0,0">
-                <ScrollViewer Margin="15">
-                    <StackPanel>
-                        <TextBlock Text="Script Details" 
+            <!-- Right Panel - Script Details and Output -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                <!-- Script Details Section -->
+                <Border Grid.Row="0"
+                        BorderBrush="Gray" 
+                        BorderThickness="1" 
+                        CornerRadius="5" 
+                        Margin="10,0,0,5">
+                    <ScrollViewer Margin="15" MaxHeight="300">
+                        <StackPanel>
+                            <TextBlock Text="Script Details" 
+                                       FontSize="16" 
+                                       FontWeight="Bold" 
+                                       Margin="0,0,0,15"/>
+                            
+                            <StackPanel IsVisible="{Binding CanRunScript}">
+                                <TextBlock Text="{Binding SelectedScriptName}" 
+                                           FontSize="18" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,10"/>
+                                
+                                <TextBlock Text="Description:" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding SelectedScriptDescription}" 
+                                           TextWrapping="Wrap" 
+                                           Margin="0,0,0,15"/>
+                                
+                                <TextBlock Text="Category:" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding SelectedScriptCategory}" 
+                                           Margin="0,0,0,15"/>
+                                
+                                <TextBlock Text="Script File:" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding SelectedScriptFile}" 
+                                           Margin="0,0,0,15"/>
+                                
+                                <Button Content="Run Script" 
+                                        Command="{Binding RunScriptCommand}"
+                                        IsEnabled="{Binding CanRunScript}"
+                                        HorizontalAlignment="Left"
+                                        Padding="20,10"
+                                        Background="DodgerBlue"
+                                        Foreground="White"
+                                        FontWeight="Bold"/>
+                            </StackPanel>
+                            
+                            <TextBlock Text="Select a script from the left panel to view details and run it."
+                                       IsVisible="{Binding !CanRunScript}"
+                                       FontStyle="Italic"
+                                       Foreground="Gray"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+                
+                <!-- Script Output Section -->
+                <Border Grid.Row="1"
+                        BorderBrush="Gray" 
+                        BorderThickness="1" 
+                        CornerRadius="5" 
+                        Margin="10,5,0,0">
+                    <Grid RowDefinitions="Auto,*" Margin="15">
+                        <TextBlock Grid.Row="0"
+                                   Text="Script Output" 
                                    FontSize="16" 
                                    FontWeight="Bold" 
-                                   Margin="0,0,0,15"/>
+                                   Margin="0,0,0,10"/>
                         
-                        <StackPanel IsVisible="{Binding CanRunScript}">
-                            <TextBlock Text="{Binding SelectedScriptName}" 
-                                       FontSize="18" 
-                                       FontWeight="Bold" 
-                                       Margin="0,0,0,10"/>
-                            
-                            <TextBlock Text="Description:" 
-                                       FontWeight="Bold" 
-                                       Margin="0,0,0,5"/>
-                            <TextBlock Text="{Binding SelectedScriptDescription}" 
-                                       TextWrapping="Wrap" 
-                                       Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Category:" 
-                                       FontWeight="Bold" 
-                                       Margin="0,0,0,5"/>
-                            <TextBlock Text="{Binding SelectedScriptCategory}" 
-                                       Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Script File:" 
-                                       FontWeight="Bold" 
-                                       Margin="0,0,0,5"/>
-                            <TextBlock Text="{Binding SelectedScriptFile}" 
-                                       Margin="0,0,0,15"/>
-                            
-                            <Button Content="Run Script" 
-                                    Command="{Binding RunScriptCommand}"
-                                    IsEnabled="{Binding CanRunScript}"
-                                    HorizontalAlignment="Left"
-                                    Padding="20,10"
-                                    Background="DodgerBlue"
-                                    Foreground="White"
-                                    FontWeight="Bold"/>
-                        </StackPanel>
-                        
-                        <TextBlock Text="Select a script from the left panel to view details and run it."
-                                   IsVisible="{Binding !CanRunScript}"
-                                   FontStyle="Italic"
-                                   Foreground="Gray"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
+                        <ScrollViewer Grid.Row="1" 
+                                      Background="Black"
+                                      Foreground="White">
+                            <TextBlock Text="{Binding ScriptOutput}"
+                                       FontFamily="Consolas,Monaco,monospace"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Margin="10"
+                                       Background="Black"
+                                       Foreground="LightGreen"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
         
         <!-- Footer -->
