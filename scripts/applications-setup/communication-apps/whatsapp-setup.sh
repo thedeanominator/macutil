@@ -1,26 +1,20 @@
-#!/bin/bash
+#!/bin/sh -e
 
-echo "Installing WhatsApp Desktop..."
+. ../../common-script.sh
 
-# Check if Homebrew is installed
-if ! command -v brew &> /dev/null; then
-    echo "Homebrew is required but not installed. Please install Homebrew first."
-    exit 1
-fi
-
-# Install WhatsApp Desktop using Homebrew
-if brew list --cask whatsapp &> /dev/null; then
-    echo "WhatsApp Desktop is already installed."
-else
-    echo "Installing WhatsApp Desktop..."
-    brew install --cask whatsapp
-    
-    if [ $? -eq 0 ]; then
-        echo "WhatsApp Desktop installed successfully!"
+installWhatsApp() {
+    if ! brewprogram_exists whatsapp; then
+        printf "%b\n" "${YELLOW}Installing WhatsApp...${RC}"
+        brew install --cask whatsapp
+        if [ $? -ne 0 ]; then
+            printf "%b\n" "${RED}Failed to install WhatsApp. Please check your Homebrew installation or try again later.${RC}"
+            exit 1
+        fi
+        printf "%b\n" "${GREEN}WhatsApp installed successfully!${RC}"
     else
-        echo "Failed to install WhatsApp Desktop."
-        exit 1
+        printf "%b\n" "${GREEN}WhatsApp is already installed.${RC}"
     fi
-fi
+}
 
-echo "WhatsApp Desktop setup complete!"
+checkEnv
+installWhatsApp

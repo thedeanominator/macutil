@@ -3,33 +3,8 @@ namespace MacUtilGUI.Services
 open System
 open System.IO
 open System.Diagnostics
-open System.Collections.Generic
+open Tomlyn
 open MacUtilGUI.Models
-
-[<CLIMutable>]
-type DirectoriesConfig = {
-    directories: string[]
-}
-
-[<CLIMutable>]
-type ScriptEntry = {
-    name: string
-    description: string
-    script: string
-    task_list: string
-}
-
-[<CLIMutable>]
-type DataGroup = {
-    name: string
-    entries: ScriptEntry[]
-}
-
-[<CLIMutable>]
-type TabData = {
-    name: string
-    data: DataGroup[]
-}
 
 module ScriptService =
     
@@ -42,17 +17,6 @@ module ScriptService =
         printfn "Scripts directory exists: %b" (Directory.Exists(resolvedPath))
         resolvedPath
     
-    let convertToScriptInfo (entry: ScriptEntry) (category: string) (basePath: string) : ScriptInfo =
-        let fullPath = Path.Combine(basePath, entry.script)
-        {
-            Name = entry.name
-            Description = entry.description
-            Script = entry.script
-            TaskList = entry.task_list
-            Category = category
-            FullPath = fullPath
-        }
-    
     let loadScriptsFromDirectory (directoryPath: string) : ScriptCategory list =
         let mutable categories = []
         
@@ -62,20 +26,53 @@ module ScriptService =
             if File.Exists(tabDataPath) then
                 try
                     let content = File.ReadAllText(tabDataPath)
-                    let tabData = Tomlyn.Toml.ToModel<TabData>(content)
+                    let tomlDoc = Toml.Parse(content)
                     
-                    for dataGroup in tabData.data do
-                        let scripts = 
-                            dataGroup.entries 
-                            |> Array.map (fun entry -> 
-                                convertToScriptInfo entry dataGroup.name (Path.Combine(scriptsBasePath, directoryPath)))
-                            |> Array.toList
-                        
-                        let category = {
-                            Name = dataGroup.name
-                            Scripts = scripts
-                        }
-                        categories <- category :: categories
+                    // Parse the TOML as a dynamic table
+                    if tomlDoc.Diagnostics.Count > 0 then
+                        printfn "TOML parsing warnings/errors for %s:" tabDataPath
+                        for diag in tomlDoc.Diagnostics do
+                            printfn "  %s" (diag.ToString())
+                    
+                    let table = tomlDoc.ToModel()
+                    
+                    // Look for 'data' array in the table
+                    if table.ContainsKey("data") then
+                        match table.["data"] with
+                        | :? Tomlyn.Model.TomlTableArray as dataArray ->
+                            for dataGroup in dataArray do
+                                if dataGroup.ContainsKey("name") && dataGroup.ContainsKey("entries") then
+                                    let groupName = dataGroup.["name"].ToString()
+                                    
+                                    match dataGroup.["entries"] with
+                                    | :? Tomlyn.Model.TomlTableArray as entriesArray ->
+                                        let scripts = 
+                                            [
+                                                for entry in entriesArray do
+                                                    if entry.ContainsKey("name") && entry.ContainsKey("description") && entry.ContainsKey("script") then
+                                                        let name = entry.["name"].ToString()
+                                                        let description = entry.["description"].ToString()
+                                                        let script = entry.["script"].ToString()
+                                                        let fullPath = Path.Combine(scriptsBasePath, directoryPath, script)
+                                                        
+                                                        yield {
+                                                            Name = name
+                                                            Description = description
+                                                            Script = script
+                                                            TaskList = "I"
+                                                            Category = groupName
+                                                            FullPath = fullPath
+                                                        }
+                                            ]
+                                        
+                                        if not scripts.IsEmpty then
+                                            let category = {
+                                                Name = groupName
+                                                Scripts = scripts
+                                            }
+                                            categories <- category :: categories
+                                    | _ -> ()
+                        | _ -> ()
                 with
                 | ex ->
                     printfn "Error parsing TOML file %s: %s" tabDataPath ex.Message
@@ -117,11 +114,17 @@ module ScriptService =
             let mainTabsPath = Path.Combine(scriptsBasePath, "tabs.toml")
             if File.Exists(mainTabsPath) then
                 let content = File.ReadAllText(mainTabsPath)
-                let config = Tomlyn.Toml.ToModel<DirectoriesConfig>(content)
+                let tomlDoc = Toml.Parse(content)
+                let table = tomlDoc.ToModel()
                 
-                for directory in config.directories do
-                    let categories = loadScriptsFromDirectory directory
-                    allCategories <- allCategories @ categories
+                if table.ContainsKey("directories") then
+                    match table.["directories"] with
+                    | :? Tomlyn.Model.TomlArray as dirArray ->
+                        for dir in dirArray do
+                            let directory = dir.ToString()
+                            let categories = loadScriptsFromDirectory directory
+                            allCategories <- allCategories @ categories
+                    | _ -> ()
             else
                 // Fallback: scan known directories
                 let knownDirectories = ["applications-setup"; "system-setup"]
