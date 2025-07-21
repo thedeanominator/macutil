@@ -18,7 +18,7 @@ mkdir -p ./bin/Release/net9.0/publish/
 
 # Publish for Intel x64 Macs
 echo "🔨 Building for Intel x64 Macs..."
-dotnet publish -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -o ./bin/Release/net9.0/publish/osx-x64/
+dotnet publish -c Release -r osx-x64 -o ./bin/Release/net9.0/publish/osx-x64/
 if [ $? -eq 0 ]; then
     echo "✅ Intel x64 build successful"
 else
@@ -29,7 +29,7 @@ echo
 
 # Publish for Apple Silicon ARM64 Macs
 echo "🔨 Building for Apple Silicon ARM64 Macs..."
-dotnet publish -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true -o ./bin/Release/net9.0/publish/osx-arm64/
+dotnet publish -c Release -r osx-arm64 -o ./bin/Release/net9.0/publish/osx-arm64/
 if [ $? -eq 0 ]; then
     echo "✅ Apple Silicon ARM64 build successful"
 else
