@@ -1,9 +1,0 @@
-/Users/christitus/github/macutil/target/debug/deps/tree_sitter_bash-93ee81af1dda53f6.d: /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/lib.rs /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../src/node-types.json /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../queries/highlights.scm
-
-/Users/christitus/github/macutil/target/debug/deps/libtree_sitter_bash-93ee81af1dda53f6.rlib: /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/lib.rs /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../src/node-types.json /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../queries/highlights.scm
-
-/Users/christitus/github/macutil/target/debug/deps/libtree_sitter_bash-93ee81af1dda53f6.rmeta: /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/lib.rs /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../src/node-types.json /Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../queries/highlights.scm
-
-/Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/lib.rs:
-/Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../src/node-types.json:
-/Users/christitus/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-bash-0.23.3/bindings/rust/../../queries/highlights.scm:
