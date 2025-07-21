@@ -52,4 +52,10 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
+  <!-- Include scripts as embedded resources -->
+  <ItemGroup>
+    <EmbeddedResource Include="../scripts/**/*.sh" />
+    <EmbeddedResource Include="../scripts/**/*.toml" />
+  </ItemGroup>
+
 </Project>

@@ -3,29 +3,46 @@ namespace MacUtilGUI.Services
 open System
 open System.IO
 open System.Diagnostics
+open System.Reflection
 open Tomlyn
 open MacUtilGUI.Models
 
 module ScriptService =
     
-    let scriptsBasePath = 
-        let currentDir = Directory.GetCurrentDirectory()
-        let scriptPath = Path.Combine(currentDir, "..", "scripts")
-        let resolvedPath = Path.GetFullPath(scriptPath)
-        printfn "Current directory: %s" currentDir
-        printfn "Scripts path: %s" resolvedPath
-        printfn "Scripts directory exists: %b" (Directory.Exists(resolvedPath))
-        resolvedPath
+    let assembly = Assembly.GetExecutingAssembly()
+    
+    let getEmbeddedResource (resourcePath: string) : string option =
+        try
+            let resourceName = sprintf "MacUtilGUI.%s" (resourcePath.Replace("/", ".").Replace("\\", ".").Replace("-", "_"))
+            use stream = assembly.GetManifestResourceStream(resourceName)
+            if stream <> null then
+                use reader = new StreamReader(stream)
+                Some(reader.ReadToEnd())
+            else
+                printfn "Resource not found: %s" resourceName
+                None
+        with
+        | ex ->
+            printfn "Error reading embedded resource %s: %s" resourcePath ex.Message
+            None
+    
+    let listEmbeddedResources () =
+        let resourceNames = assembly.GetManifestResourceNames()
+        printfn "Available embedded resources:"
+        for name in resourceNames do
+            printfn "  %s" name
+    
+    let scriptsBasePath = ""
     
     let loadScriptsFromDirectory (directoryPath: string) : ScriptCategory list =
         let mutable categories = []
         
         try
-            let tabDataPath = Path.Combine(scriptsBasePath, directoryPath, "tab_data.toml")
+            let tabDataPath = sprintf "%s/tab_data.toml" directoryPath
             
-            if File.Exists(tabDataPath) then
+            match getEmbeddedResource tabDataPath with
+            | Some content ->
                 try
-                    let content = File.ReadAllText(tabDataPath)
                     let tomlDoc = Toml.Parse(content)
                     
                     // Parse the TOML as a dynamic table
@@ -53,7 +70,7 @@ module ScriptService =
                                                         let name = entry.["name"].ToString()
                                                         let description = entry.["description"].ToString()
                                                         let script = entry.["script"].ToString()
-                                                        let fullPath = Path.Combine(scriptsBasePath, directoryPath, script)
+                                                        let fullPath = sprintf "%s/%s" directoryPath script
                                                         
                                                         yield {
                                                             Name = name
@@ -76,31 +93,9 @@ module ScriptService =
                 with
                 | ex ->
                     printfn "Error parsing TOML file %s: %s" tabDataPath ex.Message
-            else
-                // If no tab_data.toml, scan for .sh files directly
-                let directoryFullPath = Path.Combine(scriptsBasePath, directoryPath)
-                if Directory.Exists(directoryFullPath) then
-                    let shellFiles = Directory.GetFiles(directoryFullPath, "*.sh")
-                    let scripts = 
-                        shellFiles 
-                        |> Array.map (fun filePath ->
-                            let fileName = Path.GetFileNameWithoutExtension(filePath)
-                            {
-                                Name = fileName
-                                Description = sprintf "Shell script: %s" fileName
-                                Script = Path.GetFileName(filePath)
-                                TaskList = "I"
-                                Category = directoryPath
-                                FullPath = filePath
-                            })
-                        |> Array.toList
-                    
-                    if not scripts.IsEmpty then
-                        let category = {
-                            Name = directoryPath
-                            Scripts = scripts
-                        }
-                        categories <- category :: categories
+            | None ->
+                printfn "ERROR: Embedded resource not found: %s" tabDataPath
+                printfn "This should not happen if resources are properly embedded!"
         with
         | ex ->
             printfn "Error loading scripts from %s: %s" directoryPath ex.Message
@@ -111,9 +106,11 @@ module ScriptService =
         let mutable allCategories = []
         
         try
-            let mainTabsPath = Path.Combine(scriptsBasePath, "tabs.toml")
-            if File.Exists(mainTabsPath) then
-                let content = File.ReadAllText(mainTabsPath)
+            listEmbeddedResources() // Debug: list all available resources
+            
+            let mainTabsPath = "tabs.toml"
+            match getEmbeddedResource mainTabsPath with
+            | Some content ->
                 let tomlDoc = Toml.Parse(content)
                 let table = tomlDoc.ToModel()
                 
@@ -125,12 +122,9 @@ module ScriptService =
                             let categories = loadScriptsFromDirectory directory
                             allCategories <- allCategories @ categories
                     | _ -> ()
-            else
-                // Fallback: scan known directories
-                let knownDirectories = ["applications-setup"; "system-setup"]
-                for directory in knownDirectories do
-                    let categories = loadScriptsFromDirectory directory
-                    allCategories <- allCategories @ categories
+            | None ->
+                printfn "ERROR: Main tabs.toml not found in embedded resources!"
+                printfn "This should not happen if resources are properly embedded!"
         with
         | ex ->
             printfn "Error loading scripts: %s" ex.Message
@@ -139,33 +133,66 @@ module ScriptService =
     
     let runScript (scriptInfo: ScriptInfo) : string =
         try
-            let startInfo = ProcessStartInfo()
-            startInfo.FileName <- "/bin/bash"
-            startInfo.Arguments <- sprintf "-c \"cd '%s' && chmod +x '%s' && ./'%s'\"" 
-                                           (Path.GetDirectoryName(scriptInfo.FullPath))
-                                           (Path.GetFileName(scriptInfo.FullPath))
-                                           (Path.GetFileName(scriptInfo.FullPath))
-            startInfo.UseShellExecute <- false
-            startInfo.CreateNoWindow <- true
-            startInfo.RedirectStandardOutput <- true
-            startInfo.RedirectStandardError <- true
-            
-            let proc = Process.Start(startInfo)
-            if proc <> null then
-                let output = proc.StandardOutput.ReadToEnd()
-                let error = proc.StandardError.ReadToEnd()
-                proc.WaitForExit()
+            // Get the script content from embedded resources
+            match getEmbeddedResource scriptInfo.FullPath with
+            | Some scriptContent ->
+                // Create a temporary file to execute the script
+                let tempDir = Path.GetTempPath()
+                let scriptFileName = Path.GetFileName(scriptInfo.Script) // Get just the filename, not the full path
+                let tempFileName = sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
+                let tempFilePath = Path.Combine(tempDir, tempFileName)
                 
-                let fullOutput = 
-                    if String.IsNullOrEmpty(error) then
-                        output
+                try
+                    // Write script content to temporary file
+                    File.WriteAllText(tempFilePath, scriptContent)
+                    
+                    // Make the temporary file executable
+                    let chmodStartInfo = ProcessStartInfo()
+                    chmodStartInfo.FileName <- "/bin/chmod"
+                    chmodStartInfo.Arguments <- sprintf "+x \"%s\"" tempFilePath
+                    chmodStartInfo.UseShellExecute <- false
+                    chmodStartInfo.CreateNoWindow <- true
+                    
+                    let chmodProc = Process.Start(chmodStartInfo)
+                    if chmodProc <> null then
+                        chmodProc.WaitForExit()
+                    
+                    // Execute the script
+                    let startInfo = ProcessStartInfo()
+                    startInfo.FileName <- "/bin/bash"
+                    startInfo.Arguments <- sprintf "\"%s\"" tempFilePath
+                    startInfo.UseShellExecute <- false
+                    startInfo.CreateNoWindow <- true
+                    startInfo.RedirectStandardOutput <- true
+                    startInfo.RedirectStandardError <- true
+                    
+                    let proc = Process.Start(startInfo)
+                    if proc <> null then
+                        let output = proc.StandardOutput.ReadToEnd()
+                        let error = proc.StandardError.ReadToEnd()
+                        proc.WaitForExit()
+                        
+                        let fullOutput = 
+                            if String.IsNullOrEmpty(error) then
+                                output
+                            else
+                                sprintf "%s\n--- ERRORS ---\n%s" output error
+                        
+                        printfn "Executed script: %s (Exit Code: %d)" scriptInfo.Name proc.ExitCode
+                        fullOutput
                     else
-                        sprintf "%s\n--- ERRORS ---\n%s" output error
-                
-                printfn "Executed script: %s (Exit Code: %d)" scriptInfo.Name proc.ExitCode
-                fullOutput
-            else
-                let errorMsg = sprintf "Failed to start script: %s" scriptInfo.Name
+                        let errorMsg = sprintf "Failed to start script: %s" scriptInfo.Name
+                        printfn "%s" errorMsg
+                        errorMsg
+                finally
+                    // Clean up temporary file
+                    if File.Exists(tempFilePath) then
+                        try
+                            File.Delete(tempFilePath)
+                        with
+                        | _ -> () // Ignore cleanup errors
+            | None ->
+                let errorMsg = sprintf "Script content not found in embedded resources: %s" scriptInfo.FullPath
                 printfn "%s" errorMsg
                 errorMsg
         with
