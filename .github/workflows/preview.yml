@@ -18,7 +18,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -34,6 +33,9 @@ jobs:
               repo: context.repo.repo,
               per_page: 1
             });
+            if (releases.data.length === 0) {
+              throw new Error('No releases found');
+            }
             return releases.data[0].tag_name;
 
       - name: Set tag name ( Workflow Run )
@@ -62,7 +64,15 @@ jobs:
 
       - name: Download binary
         run: |
-          curl -LO "https://github.com/${{ github.repository }}/releases/download/${{ steps.final_tag.outputs.tag_name }}/macutil-macos-arm64"
+          echo "Downloading binary for tag: ${{ steps.final_tag.outputs.tag_name }}"
+          if ! curl -LO "https://github.com/${{ github.repository }}/releases/download/${{ steps.final_tag.outputs.tag_name }}/macutil-macos-arm64"; then
+            echo "Failed to download binary"
+            exit 1
+          fi
+          if [ ! -f "macutil-macos-arm64" ]; then
+            echo "Binary file was not downloaded"
+            exit 1
+          fi
 
       - name: Set env
         id: branch_setup
@@ -71,7 +81,8 @@ jobs:
           mkdir -p build
           mv macutil-macos-arm64 build/macutil
           echo "${{ github.workspace }}/build" >> $GITHUB_PATH
-          branch_name=$(echo "${{ steps.final_tag.outputs.tag_name }}" | tr . -)
+          # Create a safe branch name by replacing invalid characters
+          branch_name=$(echo "${{ steps.final_tag.outputs.tag_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g' | sed 's/\./-/g')
           echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
 
       - name: Install system dependencies
@@ -85,9 +96,19 @@ jobs:
           VHS_VERSION="v0.7.2"
           wget "https://github.com/charmbracelet/vhs/releases/download/${VHS_VERSION}/vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
           tar -xzf "vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
-          cd "vhs_${VHS_VERSION#v}_Linux_x86_64"
-          chmod +x vhs
-          sudo cp vhs /usr/local/bin/vhs
+          
+          # Find the vhs binary (it might be in the extracted directory or at root level)
+          if [ -f "vhs_${VHS_VERSION#v}_Linux_x86_64/vhs" ]; then
+            sudo cp "vhs_${VHS_VERSION#v}_Linux_x86_64/vhs" /usr/local/bin/vhs
+          elif [ -f "vhs" ]; then
+            sudo cp vhs /usr/local/bin/vhs
+          else
+            echo "VHS binary not found after extraction"
+            ls -la
+            exit 1
+          fi
+          
+          chmod +x /usr/local/bin/vhs
           vhs --version
 
       - name: Generate preview with VHS

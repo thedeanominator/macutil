@@ -57,7 +57,27 @@ jobs:
       - name: Extract Version
         id: extract_version
         run: |
-          version=$(date +"%Y.%m.%d")
+          # Fetch all tags
+          git fetch --tags
+          
+          # Get the latest tag, default to 0.0.0 if no tags exist
+          latest_tag=$(git tag --sort=-version:refname | head -n1)
+          if [ -z "$latest_tag" ]; then
+            latest_tag="0.0.0"
+          fi
+          
+          # Parse the latest tag (assuming format X.Y.Z)
+          IFS='.' read -ra VERSION_PARTS <<< "$latest_tag"
+          major=${VERSION_PARTS[0]:-0}
+          minor=${VERSION_PARTS[1]:-0}
+          patch=${VERSION_PARTS[2]:-0}
+          
+          # Increment minor version by 0.1 (increment minor, reset patch to 0)
+          new_minor=$((minor + 1))
+          version="${major}.${new_minor}.0"
+          
+          echo "Previous version: $latest_tag"
+          echo "New version: $version"
           echo "version=$version" >> $GITHUB_ENV
         shell: bash
 
