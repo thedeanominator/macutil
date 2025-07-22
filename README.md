@@ -26,10 +26,6 @@ If you find macutil helpful, please consider giving it a ⭐️ to show your sup
 
 We welcome contributions from the community! Before you start, please review our [Contributing Guidelines](.github/CONTRIBUTING.md) to understand how to make the most effective and efficient contributions.
 
-[Official macutil Roadmap](https://chris-titus-docs.github.io/macutil-docs/roadmap/)
-
-Docs are now [here](https://github.com/Chris-Titus-Docs/macutil-docs)
-
 ## 🏅 Thanks to All Contributors
 
 Thank you to everyone who has contributed to the development of macutil. Your efforts are greatly appreciated, and you're helping make this tool better for everyone!
