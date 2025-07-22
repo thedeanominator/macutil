@@ -13,8 +13,30 @@ module ScriptService =
 
     let getEmbeddedResource (resourcePath: string) : string option =
         try
-            let resourceName =
-                sprintf "MacUtilGUI.%s" (resourcePath.Replace("/", ".").Replace("\\", ".").Replace("-", "_"))
+            // How F# handles embedded resources:
+            // 1. Resource names are case-sensitive.
+            // 2. They use the format "Namespace.Folder.FileName" with folders separated by dots.
+            // 3. Hyphens in the directories are converted to underscores in the resource name.
+            // 4. Hyphens in the filename are kept as-is.
+            //    For example, "script-common/common-script.sh" becomes "MacUtilGUI.scripts_common.common-script.sh".
+            // 5. The namespace is typically the assembly name, so we prefix it with "MacUtilGUI.".
+
+            let pathParts = resourcePath.Replace("\\", "/").Split('/')
+            let convertedParts = 
+                pathParts 
+                |> Array.mapi (fun i part -> 
+                    if i = pathParts.Length - 1 then 
+                        // Last part is filename - keep hyphens
+                        part
+                    else 
+                        // Directory parts - convert hyphens to underscores
+                        part.Replace("-", "_")
+                )
+            
+            let convertedPath = String.Join(".", convertedParts)
+            let resourceName = sprintf "MacUtilGUI.%s" convertedPath
+            
+            printfn "DEBUG: Resource path '%s' -> '%s'" resourcePath resourceName
 
             use stream = assembly.GetManifestResourceStream(resourceName)
 
@@ -106,7 +128,11 @@ module ScriptService =
         let mutable allCategories = []
 
         try
-            listEmbeddedResources () // Debug: list all available resources
+            // Quick check of embedded resources
+            let resourceNames = assembly.GetManifestResourceNames()
+            printfn "INFO: Found %d embedded resources including common-script.sh: %b" 
+                resourceNames.Length 
+                (resourceNames |> Array.exists (fun name -> name.EndsWith("common-script.sh")))
 
             let mainTabsPath = "tabs.toml"
 
@@ -136,6 +162,41 @@ module ScriptService =
             // Get the script content from embedded resources
             match getEmbeddedResource scriptInfo.FullPath with
             | Some scriptContent ->
+                // Check if script sources common-script.sh
+                let needsCommonScript = scriptContent.Contains(". ../common-script.sh") || scriptContent.Contains(". ../../common-script.sh")
+                
+                let finalScriptContent = 
+                    if needsCommonScript then
+                        printfn "DEBUG: Script needs common-script.sh, checking embedded resources:"
+                        listEmbeddedResources() // Show all available resources for debugging
+                        
+                        // Get common script content
+                        match getEmbeddedResource "common-script.sh" with
+                        | Some commonContent ->
+                            printfn "DEBUG: Successfully found common-script.sh in embedded resources"
+                            // Remove sourcing line and combine scripts
+                            let cleanedScript = 
+                                scriptContent
+                                    .Replace(". ../common-script.sh", "")
+                                    .Replace(". ../../common-script.sh", "")
+                                    .Trim()
+                            
+                            // Combine: shebang + common functions + original script (without sourcing)
+                            let shebang = "#!/bin/sh -e\n\n"
+                            let commonFunctions = 
+                                commonContent
+                                    .Replace("#!/bin/sh -e", "")
+                                    .Replace("# shellcheck disable=SC2034", "")
+                                    .Trim()
+                            
+                            sprintf "%s# Embedded common script functions\n%s\n\n# Original script content\n%s" 
+                                shebang commonFunctions cleanedScript
+                        | None ->
+                            printfn "Warning: common-script.sh not found in embedded resources, using original script"
+                            scriptContent
+                    else
+                        scriptContent
+
                 // Create a temporary file to execute the script
                 let tempDir = Path.GetTempPath()
                 let scriptFileName = Path.GetFileName(scriptInfo.Script) // Get just the filename, not the full path
@@ -147,7 +208,7 @@ module ScriptService =
 
                 try
                     // Write script content to temporary file
-                    File.WriteAllText(tempFilePath, scriptContent)
+                    File.WriteAllText(tempFilePath, finalScriptContent)
 
                     // Make the temporary file executable
                     let chmodStartInfo = ProcessStartInfo()

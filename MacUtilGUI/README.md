@@ -21,7 +21,6 @@ MacUtilGUI/
 │   ├── ScriptInfo.fs          # Script information model
 │   └── ScriptCategory.fs      # Script category model
 ├── Services/
-│   ├── TomlParser.fs          # TOML file parsing service
 │   └── ScriptService.fs       # Script loading and execution service
 ├── ViewModels/
 │   ├── ViewModelBase.fs       # Base view model class
@@ -33,7 +32,7 @@ MacUtilGUI/
 
 ## Prerequisites
 
-- .NET 8.0 SDK or later
+- .NET 9.0 SDK or later
 - F# support
 
 ## Building and Running
