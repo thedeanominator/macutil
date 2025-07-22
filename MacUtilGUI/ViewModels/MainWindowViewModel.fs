@@ -2,6 +2,7 @@ namespace MacUtilGUI.ViewModels
 
 open System.Collections.ObjectModel
 open System.Windows.Input
+open System.Threading.Tasks
 open Avalonia.Threading
 open MacUtilGUI.Models
 open MacUtilGUI.Services
@@ -23,6 +24,7 @@ type MainWindowViewModel() as this =
 
     let mutable selectedScript: ScriptInfo option = None
     let mutable scriptOutput: string = ""
+    let mutable isScriptRunning: bool = false
     let categories = ObservableCollection<ScriptCategory>()
 
     let selectScriptCommand =
@@ -43,21 +45,38 @@ type MainWindowViewModel() as this =
     let runScriptCommand =
         RelayCommand(fun _ ->
             match selectedScript with
-            | Some script ->
-                scriptOutput <- "Running script..."
+            | Some script when not isScriptRunning ->
+                isScriptRunning <- true
+                scriptOutput <- "Starting script...\n"
                 this.OnPropertyChanged("ScriptOutput")
+                this.OnPropertyChanged("CanRunScript")
+                this.OnPropertyChanged("IsScriptRunning")
 
-                // Run script in background to avoid blocking UI
-                async {
-                    let output = ScriptService.runScript script
-                    // Update UI on the UI thread
+                // Define output and error handlers
+                let onOutput (line: string) =
                     Dispatcher.UIThread.InvokeAsync(fun () ->
-                        scriptOutput <- output
-                        this.OnPropertyChanged("ScriptOutput"))
-                    |> ignore
-                }
-                |> Async.Start
-            | None -> ())
+                        scriptOutput <- scriptOutput + line + "\n"
+                        this.OnPropertyChanged("ScriptOutput")
+                    ) |> ignore
+
+                let onError (line: string) =
+                    Dispatcher.UIThread.InvokeAsync(fun () ->
+                        scriptOutput <- scriptOutput + "[ERROR] " + line + "\n"
+                        this.OnPropertyChanged("ScriptOutput")
+                    ) |> ignore
+
+                // Run script asynchronously with real-time output
+                let scriptTask = ScriptService.runScript script onOutput onError
+                scriptTask.ContinueWith(fun (task: Task<int>) ->
+                    Dispatcher.UIThread.InvokeAsync(fun () ->
+                        isScriptRunning <- false
+                        scriptOutput <- scriptOutput + sprintf "\n=== Script completed with exit code: %d ===" task.Result
+                        this.OnPropertyChanged("ScriptOutput")
+                        this.OnPropertyChanged("CanRunScript")
+                        this.OnPropertyChanged("IsScriptRunning")
+                    ) |> ignore
+                ) |> ignore
+            | _ -> ())
 
     do
         // Load scripts on initialization
@@ -92,7 +111,9 @@ type MainWindowViewModel() as this =
         | Some script -> script.Script
         | None -> ""
 
-    member _.CanRunScript = selectedScript.IsSome
+    member _.CanRunScript = selectedScript.IsSome && not isScriptRunning
+
+    member _.IsScriptRunning = isScriptRunning
 
     member _.SelectScriptCommand = selectScriptCommand
 
