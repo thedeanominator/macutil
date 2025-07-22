@@ -13,7 +13,7 @@ on:
 
 jobs:
   generate_preview:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     environment: macutil_env
     permissions:
       contents: write
@@ -87,28 +87,13 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg ttyd curl
+          # Install ffmpeg and ttyd using Homebrew
+          brew install ffmpeg ttyd
 
-      - name: Install VHS binary
+      - name: Install VHS
         run: |
-          # Download a specific version of VHS
-          VHS_VERSION="v0.7.2"
-          wget "https://github.com/charmbracelet/vhs/releases/download/${VHS_VERSION}/vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
-          tar -xzf "vhs_${VHS_VERSION#v}_Linux_x86_64.tar.gz"
-          
-          # Find the vhs binary (it might be in the extracted directory or at root level)
-          if [ -f "vhs_${VHS_VERSION#v}_Linux_x86_64/vhs" ]; then
-            sudo cp "vhs_${VHS_VERSION#v}_Linux_x86_64/vhs" /usr/local/bin/vhs
-          elif [ -f "vhs" ]; then
-            sudo cp vhs /usr/local/bin/vhs
-          else
-            echo "VHS binary not found after extraction"
-            ls -la
-            exit 1
-          fi
-          
-          chmod +x /usr/local/bin/vhs
+          # Install VHS using Homebrew (includes all dependencies)
+          brew install vhs
           vhs --version
 
       - name: Generate preview with VHS
