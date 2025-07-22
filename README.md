@@ -9,7 +9,6 @@
 
 # HEAVY DEVELOPMENT
 
-- Make a theme that looks good
 - Look at creating or installing a package into /Applications or other methods like copying to ~/.local/bin - _Update: Waiting on Apple Developer License Approval_
 
 # Installation
