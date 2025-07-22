@@ -1,6 +1,13 @@
 name: F# Checks
 
 on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - '**/*.fs'
+      - '**/*.fsproj'
+      - 'MacUtilGUI/**'
   pull_request:
     branches: ["main"]
     paths:
