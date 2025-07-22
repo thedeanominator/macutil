@@ -62,14 +62,14 @@ jobs:
 
       - name: Download binary
         run: |
-          curl -LO "https://github.com/${{ github.repository }}/releases/download/${{ steps.final_tag.outputs.tag_name }}/macutil"
+          curl -LO "https://github.com/${{ github.repository }}/releases/download/${{ steps.final_tag.outputs.tag_name }}/macutil-macos-arm64"
 
       - name: Set env
         id: branch_setup
         run: |
-          chmod +x macutil
+          chmod +x macutil-macos-arm64
           mkdir -p build
-          mv macutil build/macutil
+          mv macutil-macos-arm64 build/macutil
           echo "${{ github.workspace }}/build" >> $GITHUB_PATH
           branch_name=$(echo "${{ steps.final_tag.outputs.tag_name }}" | tr . -)
           echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
