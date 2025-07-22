@@ -10,9 +10,8 @@
 # HEAVY DEVELOPMENT
 
 - Make a theme that looks good
-- fix references to common script or compile common script functions into the sh files under `scripts/`
-- Look at creating or installing a package into /Applications or other methods like copying to ~/.local/bin
-- Realtime verbose output of script execution - Right now, it only shows output AFTER the script has finished executing.
+- On sudo elevation, make it so the user can see the password prompt outside terminal
+- Look at creating or installing a package into /Applications or other methods like copying to ~/.local/bin - _Update: Waiting on Apple Developer License Approval_
 
 # Installation
 

@@ -13,6 +13,15 @@ module ScriptService =
 
     let assembly = Assembly.GetExecutingAssembly()
 
+    // Function to check if a script needs elevation (contains sudo, $ESCALATION_TOOL, etc.)
+    let needsElevation (scriptContent: string) : bool =
+        scriptContent.Contains("sudo ") ||
+        scriptContent.Contains("$ESCALATION_TOOL") ||
+        scriptContent.Contains("${ESCALATION_TOOL}") ||
+        scriptContent.Contains("require_escalation") ||
+        scriptContent.Contains("/usr/bin/sudo") ||
+        scriptContent.Contains("/bin/sudo")
+
     let getEmbeddedResource (resourcePath: string) : string option =
         try
             // How F# handles embedded resources:
@@ -210,78 +219,158 @@ module ScriptService =
                         else
                             scriptContent
 
-                    // Create a temporary file to execute the script
-                    let tempDir = Path.GetTempPath()
-                    let scriptFileName = Path.GetFileName(scriptInfo.Script)
+                    // Check if script needs elevation
+                    if needsElevation finalScriptContent then
+                        onOutput "Script requires administrator privileges..."
+                        
+                        // Replace $ESCALATION_TOOL with empty string since we'll handle elevation via osascript
+                        let cleanedScript = finalScriptContent.Replace("$ESCALATION_TOOL ", "").Replace("${ESCALATION_TOOL} ", "").Replace("sudo ", "")
+                        
+                        // Create a temporary script file for elevation
+                        let tempDir = Path.GetTempPath()
+                        let scriptFileName = Path.GetFileName(scriptInfo.Script)
+                        let tempFileName = sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
+                        let tempFilePath = Path.Combine(tempDir, tempFileName)
+                        
+                        try
+                            // Write script content to temporary file
+                            File.WriteAllText(tempFilePath, cleanedScript)
+                            
+                            // Make the temporary file executable
+                            let chmodStartInfo = ProcessStartInfo()
+                            chmodStartInfo.FileName <- "/bin/chmod"
+                            chmodStartInfo.Arguments <- sprintf "+x \"%s\"" tempFilePath
+                            chmodStartInfo.UseShellExecute <- false
+                            chmodStartInfo.CreateNoWindow <- true
+                            let chmodProc = Process.Start(chmodStartInfo)
+                            if chmodProc <> null then
+                                chmodProc.WaitForExit()
 
-                    let tempFileName =
-                        sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
+                            onOutput "Prompting for administrator password..."
+                            
+                            // Use osascript to run the script with elevated privileges
+                            // Note: osascript doesn't provide real-time output, so we'll get all output at the end
+                            let escapedPath = tempFilePath.Replace("\"", "\\\"")
+                            let osascriptCommand = sprintf """osascript -e 'do shell script "\"%s\"" with administrator privileges'""" escapedPath
+                            
+                            let startInfo = ProcessStartInfo()
+                            startInfo.FileName <- "/bin/sh"
+                            startInfo.Arguments <- sprintf "-c \"%s\"" osascriptCommand
+                            startInfo.UseShellExecute <- false
+                            startInfo.CreateNoWindow <- true
+                            startInfo.RedirectStandardOutput <- true
+                            startInfo.RedirectStandardError <- true
 
-                    let tempFilePath = Path.Combine(tempDir, tempFileName)
+                            let proc = Process.Start(startInfo)
 
-                    try
-                        // Write script content to temporary file
-                        File.WriteAllText(tempFilePath, finalScriptContent)
+                            if proc <> null then
+                                onOutput "Script is running with administrator privileges..."
+                                onOutput "Note: Output will appear when script completes (osascript limitation)"
+                                
+                                // Wait for the process to complete
+                                proc.WaitForExit()
+                                
+                                // Get all output at once (osascript limitation)
+                                let output = proc.StandardOutput.ReadToEnd()
+                                let error = proc.StandardError.ReadToEnd()
+                                
+                                // Display output line by line for better readability
+                                if not (String.IsNullOrEmpty(output)) then
+                                    let lines = output.Split([|'\n'; '\r'|], StringSplitOptions.RemoveEmptyEntries)
+                                    for line in lines do
+                                        onOutput line
+                                        
+                                if not (String.IsNullOrEmpty(error)) then
+                                    let lines = error.Split([|'\n'; '\r'|], StringSplitOptions.RemoveEmptyEntries)
+                                    for line in lines do
+                                        onError line
 
-                        // Make the temporary file executable
-                        let chmodStartInfo = ProcessStartInfo()
-                        chmodStartInfo.FileName <- "/bin/chmod"
-                        chmodStartInfo.Arguments <- sprintf "+x \"%s\"" tempFilePath
-                        chmodStartInfo.UseShellExecute <- false
-                        chmodStartInfo.CreateNoWindow <- true
+                                onOutput (sprintf "Script completed: %s (Exit Code: %d)" scriptInfo.Name proc.ExitCode)
+                                proc.ExitCode
+                            else
+                                let errorMsg = sprintf "Failed to start elevated script: %s" scriptInfo.Name
+                                onError errorMsg
+                                -1
+                        finally
+                            // Clean up temporary file
+                            if File.Exists(tempFilePath) then
+                                try
+                                    File.Delete(tempFilePath)
+                                with _ ->
+                                    () // Ignore cleanup errors
+                    else
+                        // Script doesn't need elevation, run normally
+                        let tempDir = Path.GetTempPath()
+                        let scriptFileName = Path.GetFileName(scriptInfo.Script)
 
-                        let chmodProc = Process.Start(chmodStartInfo)
+                        let tempFileName =
+                            sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
 
-                        if chmodProc <> null then
-                            chmodProc.WaitForExit()
+                        let tempFilePath = Path.Combine(tempDir, tempFileName)
 
-                        // Execute the script with real-time output
-                        let startInfo = ProcessStartInfo()
-                        startInfo.FileName <- "/bin/bash"
-                        startInfo.Arguments <- sprintf "\"%s\"" tempFilePath
-                        startInfo.UseShellExecute <- false
-                        startInfo.CreateNoWindow <- true
-                        startInfo.RedirectStandardOutput <- true
-                        startInfo.RedirectStandardError <- true
+                        try
+                            // Write script content to temporary file
+                            File.WriteAllText(tempFilePath, finalScriptContent)
 
-                        let proc = Process.Start(startInfo)
+                            // Make the temporary file executable
+                            let chmodStartInfo = ProcessStartInfo()
+                            chmodStartInfo.FileName <- "/bin/chmod"
+                            chmodStartInfo.Arguments <- sprintf "+x \"%s\"" tempFilePath
+                            chmodStartInfo.UseShellExecute <- false
+                            chmodStartInfo.CreateNoWindow <- true
 
-                        if proc <> null then
-                            // Set up async reading of output streams
-                            let outputBuilder = StringBuilder()
-                            let errorBuilder = StringBuilder()
+                            let chmodProc = Process.Start(chmodStartInfo)
 
-                            // Handle output data received events
-                            proc.OutputDataReceived.Add(fun args ->
-                                if not (String.IsNullOrEmpty(args.Data)) then
-                                    outputBuilder.AppendLine(args.Data) |> ignore
-                                    onOutput args.Data)
+                            if chmodProc <> null then
+                                chmodProc.WaitForExit()
 
-                            proc.ErrorDataReceived.Add(fun args ->
-                                if not (String.IsNullOrEmpty(args.Data)) then
-                                    errorBuilder.AppendLine(args.Data) |> ignore
-                                    onError args.Data)
+                            // Execute the script with real-time output
+                            let startInfo = ProcessStartInfo()
+                            startInfo.FileName <- "/bin/bash"
+                            startInfo.Arguments <- sprintf "\"%s\"" tempFilePath
+                            startInfo.UseShellExecute <- false
+                            startInfo.CreateNoWindow <- true
+                            startInfo.RedirectStandardOutput <- true
+                            startInfo.RedirectStandardError <- true
 
-                            // Start async reading
-                            proc.BeginOutputReadLine()
-                            proc.BeginErrorReadLine()
+                            let proc = Process.Start(startInfo)
 
-                            // Wait for the process to complete
-                            proc.WaitForExit()
+                            if proc <> null then
+                                // Set up async reading of output streams
+                                let outputBuilder = StringBuilder()
+                                let errorBuilder = StringBuilder()
 
-                            onOutput (sprintf "Script completed: %s (Exit Code: %d)" scriptInfo.Name proc.ExitCode)
-                            proc.ExitCode
-                        else
-                            let errorMsg = sprintf "Failed to start script: %s" scriptInfo.Name
-                            onError errorMsg
-                            -1
-                    finally
-                        // Clean up temporary file
-                        if File.Exists(tempFilePath) then
-                            try
-                                File.Delete(tempFilePath)
-                            with _ ->
-                                () // Ignore cleanup errors
+                                // Handle output data received events
+                                proc.OutputDataReceived.Add(fun args ->
+                                    if not (String.IsNullOrEmpty(args.Data)) then
+                                        outputBuilder.AppendLine(args.Data) |> ignore
+                                        onOutput args.Data)
+
+                                proc.ErrorDataReceived.Add(fun args ->
+                                    if not (String.IsNullOrEmpty(args.Data)) then
+                                        errorBuilder.AppendLine(args.Data) |> ignore
+                                        onError args.Data)
+
+                                // Start async reading
+                                proc.BeginOutputReadLine()
+                                proc.BeginErrorReadLine()
+
+                                // Wait for the process to complete
+                                proc.WaitForExit()
+
+                                onOutput (sprintf "Script completed: %s (Exit Code: %d)" scriptInfo.Name proc.ExitCode)
+                                proc.ExitCode
+                            else
+                                let errorMsg = sprintf "Failed to start script: %s" scriptInfo.Name
+                                onError errorMsg
+                                -1
+                        finally
+                            // Clean up temporary file
+                            if File.Exists(tempFilePath) then
+                                try
+                                    File.Delete(tempFilePath)
+                                with _ ->
+                                    () // Ignore cleanup errors
                 | None ->
                     let errorMsg =
                         sprintf "Script content not found in embedded resources: %s" scriptInfo.FullPath
