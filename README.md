@@ -14,51 +14,9 @@
 - Look at creating or installing a package into /Applications or other methods like copying to ~/.local/bin
 - Realtime verbose output of script execution - Right now, it only shows output AFTER the script has finished executing.
 
-## 💡 Usage
-To get started, pick which branch you would like to use, then run the command in your terminal:
-### Stable Branch (Recommended)
-```bash
-curl -fsSL https://christitus.com/mac | sh
-```
-### Dev branch not setup
-```bash
+# Installation
 
-```
-
-### CLI arguments
-
-View available options by running:
-
-```bash
-macutil --help
-```
-
-For installer options:
-
-```bash
-curl -fsSL https://christitus.com/mac | sh -s -- --help
-```
-
-## ⬇️ Installation
-
-## Configuration
-
-macutil supports configuration through a TOML config file. Path to the file can be specified with `--config` (or `-c`).
-
-Example config:
-```toml
-# example_config.toml
-
-auto_execute = [
-    "Fastfetch",
-    "Alacritty",
-    "Kitty"
-]
-
-skip_confirmation = true
-size_bypass = true
-```
-
+Currently, macutil is download only and doesn't have a developer license. You can download the latest release from the [Releases page](https://github.com/ChrisTitusTech/macutil/releases/latest).
 
 ## 💖 Support
 
