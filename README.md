@@ -7,6 +7,13 @@
 > [!NOTE]
 > Since the project is still in active development, you may encounter some issues. Please consider [submitting feedback](https://github.com/ChrisTitusTech/macutil/issues) if you do.
 
+# HEAVY DEVELOPMENT
+
+- Make a theme that looks good
+- fix references to common script or compile common script functions into the sh files under `scripts/`
+- Look at creating or installing a package into /Applications or other methods like copying to ~/.local/bin
+- Realtime verbose output of script execution - Right now, it only shows output AFTER the script has finished executing.
+
 ## 💡 Usage
 To get started, pick which branch you would like to use, then run the command in your terminal:
 ### Stable Branch (Recommended)
