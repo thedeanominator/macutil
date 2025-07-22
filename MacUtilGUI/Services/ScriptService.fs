@@ -24,20 +24,20 @@ module ScriptService =
             // 5. The namespace is typically the assembly name, so we prefix it with "MacUtilGUI.".
 
             let pathParts = resourcePath.Replace("\\", "/").Split('/')
-            let convertedParts = 
-                pathParts 
-                |> Array.mapi (fun i part -> 
-                    if i = pathParts.Length - 1 then 
+
+            let convertedParts =
+                pathParts
+                |> Array.mapi (fun i part ->
+                    if i = pathParts.Length - 1 then
                         // Last part is filename - keep hyphens
                         part
-                    else 
+                    else
                         // Directory parts - convert hyphens to underscores
-                        part.Replace("-", "_")
-                )
-            
+                        part.Replace("-", "_"))
+
             let convertedPath = String.Join(".", convertedParts)
             let resourceName = sprintf "MacUtilGUI.%s" convertedPath
-            
+
             printfn "DEBUG: Resource path '%s' -> '%s'" resourcePath resourceName
 
             use stream = assembly.GetManifestResourceStream(resourceName)
@@ -132,8 +132,10 @@ module ScriptService =
         try
             // Quick check of embedded resources
             let resourceNames = assembly.GetManifestResourceNames()
-            printfn "INFO: Found %d embedded resources including common-script.sh: %b" 
-                resourceNames.Length 
+
+            printfn
+                "INFO: Found %d embedded resources including common-script.sh: %b"
+                resourceNames.Length
                 (resourceNames |> Array.exists (fun name -> name.EndsWith("common-script.sh")))
 
             let mainTabsPath = "tabs.toml"
@@ -167,35 +169,43 @@ module ScriptService =
                 match getEmbeddedResource scriptInfo.FullPath with
                 | Some scriptContent ->
                     // Check if script sources common-script.sh
-                    let needsCommonScript = scriptContent.Contains(". ../common-script.sh") || scriptContent.Contains(". ../../common-script.sh")
-                    
-                    let finalScriptContent = 
+                    let needsCommonScript =
+                        scriptContent.Contains(". ../common-script.sh")
+                        || scriptContent.Contains(". ../../common-script.sh")
+
+                    let finalScriptContent =
                         if needsCommonScript then
                             onOutput "DEBUG: Script needs common-script.sh, checking embedded resources..."
-                            
+
                             // Get common script content
                             match getEmbeddedResource "common-script.sh" with
                             | Some commonContent ->
                                 onOutput "DEBUG: Successfully found common-script.sh in embedded resources"
                                 // Remove sourcing line and combine scripts
-                                let cleanedScript = 
+                                let cleanedScript =
                                     scriptContent
                                         .Replace(". ../common-script.sh", "")
                                         .Replace(". ../../common-script.sh", "")
                                         .Trim()
-                                
+
                                 // Combine: shebang + common functions + original script (without sourcing)
                                 let shebang = "#!/bin/sh -e\n\n"
-                                let commonFunctions = 
+
+                                let commonFunctions =
                                     commonContent
                                         .Replace("#!/bin/sh -e", "")
                                         .Replace("# shellcheck disable=SC2034", "")
                                         .Trim()
-                                
-                                sprintf "%s# Embedded common script functions\n%s\n\n# Original script content\n%s" 
-                                    shebang commonFunctions cleanedScript
+
+                                sprintf
+                                    "%s# Embedded common script functions\n%s\n\n# Original script content\n%s"
+                                    shebang
+                                    commonFunctions
+                                    cleanedScript
                             | None ->
-                                onError "Warning: common-script.sh not found in embedded resources, using original script"
+                                onError
+                                    "Warning: common-script.sh not found in embedded resources, using original script"
+
                                 scriptContent
                         else
                             scriptContent
@@ -245,14 +255,12 @@ module ScriptService =
                             proc.OutputDataReceived.Add(fun args ->
                                 if not (String.IsNullOrEmpty(args.Data)) then
                                     outputBuilder.AppendLine(args.Data) |> ignore
-                                    onOutput args.Data
-                            )
+                                    onOutput args.Data)
 
                             proc.ErrorDataReceived.Add(fun args ->
                                 if not (String.IsNullOrEmpty(args.Data)) then
                                     errorBuilder.AppendLine(args.Data) |> ignore
-                                    onError args.Data
-                            )
+                                    onError args.Data)
 
                             // Start async reading
                             proc.BeginOutputReadLine()
@@ -277,134 +285,160 @@ module ScriptService =
                 | None ->
                     let errorMsg =
                         sprintf "Script content not found in embedded resources: %s" scriptInfo.FullPath
+
                     onError errorMsg
                     -1
             with ex ->
                 let errorMsg = sprintf "Error running script %s: %s" scriptInfo.Name ex.Message
                 onError errorMsg
-                -1
-        )
+                -1)
 
     // Alternative version that returns an IObservable for reactive programming
     let runScriptObservable (scriptInfo: ScriptInfo) : IObservable<Choice<string, string, int>> =
         { new IObservable<Choice<string, string, int>> with
             member __.Subscribe(observer) =
-                let task = Task.Run(fun () ->
-                    try
-                        // Get the script content from embedded resources
-                        match getEmbeddedResource scriptInfo.FullPath with
-                        | Some scriptContent ->
-                            // Check if script sources common-script.sh
-                            let needsCommonScript = scriptContent.Contains(". ../common-script.sh") || scriptContent.Contains(". ../../common-script.sh")
-                            
-                            let finalScriptContent = 
-                                if needsCommonScript then
-                                    observer.OnNext(Choice1Of3 "DEBUG: Script needs common-script.sh, checking embedded resources...")
-                                    
-                                    // Get common script content
-                                    match getEmbeddedResource "common-script.sh" with
-                                    | Some commonContent ->
-                                        observer.OnNext(Choice1Of3 "DEBUG: Successfully found common-script.sh in embedded resources")
-                                        // Remove sourcing line and combine scripts
-                                        let cleanedScript = 
+                let task =
+                    Task.Run(fun () ->
+                        try
+                            // Get the script content from embedded resources
+                            match getEmbeddedResource scriptInfo.FullPath with
+                            | Some scriptContent ->
+                                // Check if script sources common-script.sh
+                                let needsCommonScript =
+                                    scriptContent.Contains(". ../common-script.sh")
+                                    || scriptContent.Contains(". ../../common-script.sh")
+
+                                let finalScriptContent =
+                                    if needsCommonScript then
+                                        observer.OnNext(
+                                            Choice1Of3
+                                                "DEBUG: Script needs common-script.sh, checking embedded resources..."
+                                        )
+
+                                        // Get common script content
+                                        match getEmbeddedResource "common-script.sh" with
+                                        | Some commonContent ->
+                                            observer.OnNext(
+                                                Choice1Of3
+                                                    "DEBUG: Successfully found common-script.sh in embedded resources"
+                                            )
+                                            // Remove sourcing line and combine scripts
+                                            let cleanedScript =
+                                                scriptContent
+                                                    .Replace(". ../common-script.sh", "")
+                                                    .Replace(". ../../common-script.sh", "")
+                                                    .Trim()
+
+                                            // Combine: shebang + common functions + original script (without sourcing)
+                                            let shebang = "#!/bin/sh -e\n\n"
+
+                                            let commonFunctions =
+                                                commonContent
+                                                    .Replace("#!/bin/sh -e", "")
+                                                    .Replace("# shellcheck disable=SC2034", "")
+                                                    .Trim()
+
+                                            sprintf
+                                                "%s# Embedded common script functions\n%s\n\n# Original script content\n%s"
+                                                shebang
+                                                commonFunctions
+                                                cleanedScript
+                                        | None ->
+                                            observer.OnNext(
+                                                Choice2Of3
+                                                    "Warning: common-script.sh not found in embedded resources, using original script"
+                                            )
+
                                             scriptContent
-                                                .Replace(". ../common-script.sh", "")
-                                                .Replace(". ../../common-script.sh", "")
-                                                .Trim()
-                                        
-                                        // Combine: shebang + common functions + original script (without sourcing)
-                                        let shebang = "#!/bin/sh -e\n\n"
-                                        let commonFunctions = 
-                                            commonContent
-                                                .Replace("#!/bin/sh -e", "")
-                                                .Replace("# shellcheck disable=SC2034", "")
-                                                .Trim()
-                                        
-                                        sprintf "%s# Embedded common script functions\n%s\n\n# Original script content\n%s" 
-                                            shebang commonFunctions cleanedScript
-                                    | None ->
-                                        observer.OnNext(Choice2Of3 "Warning: common-script.sh not found in embedded resources, using original script")
+                                    else
                                         scriptContent
-                                else
-                                    scriptContent
 
-                            // Create a temporary file to execute the script
-                            let tempDir = Path.GetTempPath()
-                            let scriptFileName = Path.GetFileName(scriptInfo.Script)
+                                // Create a temporary file to execute the script
+                                let tempDir = Path.GetTempPath()
+                                let scriptFileName = Path.GetFileName(scriptInfo.Script)
 
-                            let tempFileName =
-                                sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
+                                let tempFileName =
+                                    sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
 
-                            let tempFilePath = Path.Combine(tempDir, tempFileName)
+                                let tempFilePath = Path.Combine(tempDir, tempFileName)
 
-                            try
-                                // Write script content to temporary file
-                                File.WriteAllText(tempFilePath, finalScriptContent)
+                                try
+                                    // Write script content to temporary file
+                                    File.WriteAllText(tempFilePath, finalScriptContent)
 
-                                // Make the temporary file executable
-                                let chmodStartInfo = ProcessStartInfo()
-                                chmodStartInfo.FileName <- "/bin/chmod"
-                                chmodStartInfo.Arguments <- sprintf "+x \"%s\"" tempFilePath
-                                chmodStartInfo.UseShellExecute <- false
-                                chmodStartInfo.CreateNoWindow <- true
+                                    // Make the temporary file executable
+                                    let chmodStartInfo = ProcessStartInfo()
+                                    chmodStartInfo.FileName <- "/bin/chmod"
+                                    chmodStartInfo.Arguments <- sprintf "+x \"%s\"" tempFilePath
+                                    chmodStartInfo.UseShellExecute <- false
+                                    chmodStartInfo.CreateNoWindow <- true
 
-                                let chmodProc = Process.Start(chmodStartInfo)
+                                    let chmodProc = Process.Start(chmodStartInfo)
 
-                                if chmodProc <> null then
-                                    chmodProc.WaitForExit()
+                                    if chmodProc <> null then
+                                        chmodProc.WaitForExit()
 
-                                // Execute the script with real-time output
-                                let startInfo = ProcessStartInfo()
-                                startInfo.FileName <- "/bin/bash"
-                                startInfo.Arguments <- sprintf "\"%s\"" tempFilePath
-                                startInfo.UseShellExecute <- false
-                                startInfo.CreateNoWindow <- true
-                                startInfo.RedirectStandardOutput <- true
-                                startInfo.RedirectStandardError <- true
+                                    // Execute the script with real-time output
+                                    let startInfo = ProcessStartInfo()
+                                    startInfo.FileName <- "/bin/bash"
+                                    startInfo.Arguments <- sprintf "\"%s\"" tempFilePath
+                                    startInfo.UseShellExecute <- false
+                                    startInfo.CreateNoWindow <- true
+                                    startInfo.RedirectStandardOutput <- true
+                                    startInfo.RedirectStandardError <- true
 
-                                let proc = Process.Start(startInfo)
+                                    let proc = Process.Start(startInfo)
 
-                                if proc <> null then
-                                    // Handle output data received events
-                                    proc.OutputDataReceived.Add(fun args ->
-                                        if not (String.IsNullOrEmpty(args.Data)) then
-                                            observer.OnNext(Choice1Of3 args.Data)
+                                    if proc <> null then
+                                        // Handle output data received events
+                                        proc.OutputDataReceived.Add(fun args ->
+                                            if not (String.IsNullOrEmpty(args.Data)) then
+                                                observer.OnNext(Choice1Of3 args.Data))
+
+                                        proc.ErrorDataReceived.Add(fun args ->
+                                            if not (String.IsNullOrEmpty(args.Data)) then
+                                                observer.OnNext(Choice2Of3 args.Data))
+
+                                        // Start async reading
+                                        proc.BeginOutputReadLine()
+                                        proc.BeginErrorReadLine()
+
+                                        // Wait for the process to complete
+                                        proc.WaitForExit()
+
+                                        observer.OnNext(Choice3Of3 proc.ExitCode)
+                                        observer.OnCompleted()
+                                    else
+                                        observer.OnNext(
+                                            Choice2Of3(sprintf "Failed to start script: %s" scriptInfo.Name)
+                                        )
+
+                                        observer.OnCompleted()
+                                finally
+                                    // Clean up temporary file
+                                    if File.Exists(tempFilePath) then
+                                        try
+                                            File.Delete(tempFilePath)
+                                        with _ ->
+                                            () // Ignore cleanup errors
+                            | None ->
+                                observer.OnNext(
+                                    Choice2Of3(
+                                        sprintf
+                                            "Script content not found in embedded resources: %s"
+                                            scriptInfo.FullPath
                                     )
+                                )
 
-                                    proc.ErrorDataReceived.Add(fun args ->
-                                        if not (String.IsNullOrEmpty(args.Data)) then
-                                            observer.OnNext(Choice2Of3 args.Data)
-                                    )
+                                observer.OnCompleted()
+                        with ex ->
+                            observer.OnNext(
+                                Choice2Of3(sprintf "Error running script %s: %s" scriptInfo.Name ex.Message)
+                            )
 
-                                    // Start async reading
-                                    proc.BeginOutputReadLine()
-                                    proc.BeginErrorReadLine()
+                            observer.OnCompleted())
 
-                                    // Wait for the process to complete
-                                    proc.WaitForExit()
-
-                                    observer.OnNext(Choice3Of3 proc.ExitCode)
-                                    observer.OnCompleted()
-                                else
-                                    observer.OnNext(Choice2Of3 (sprintf "Failed to start script: %s" scriptInfo.Name))
-                                    observer.OnCompleted()
-                            finally
-                                // Clean up temporary file
-                                if File.Exists(tempFilePath) then
-                                    try
-                                        File.Delete(tempFilePath)
-                                    with _ ->
-                                        () // Ignore cleanup errors
-                        | None ->
-                            observer.OnNext(Choice2Of3 (sprintf "Script content not found in embedded resources: %s" scriptInfo.FullPath))
-                            observer.OnCompleted()
-                    with ex ->
-                        observer.OnNext(Choice2Of3 (sprintf "Error running script %s: %s" scriptInfo.Name ex.Message))
-                        observer.OnCompleted()
-                )
-                
                 { new IDisposable with
-                    member __.Dispose() = 
+                    member __.Dispose() =
                         // Could cancel the task here if needed
-                        () }
-        }
+                        () } }

@@ -56,26 +56,31 @@ type MainWindowViewModel() as this =
                 let onOutput (line: string) =
                     Dispatcher.UIThread.InvokeAsync(fun () ->
                         scriptOutput <- scriptOutput + line + "\n"
-                        this.OnPropertyChanged("ScriptOutput")
-                    ) |> ignore
+                        this.OnPropertyChanged("ScriptOutput"))
+                    |> ignore
 
                 let onError (line: string) =
                     Dispatcher.UIThread.InvokeAsync(fun () ->
                         scriptOutput <- scriptOutput + "[ERROR] " + line + "\n"
-                        this.OnPropertyChanged("ScriptOutput")
-                    ) |> ignore
+                        this.OnPropertyChanged("ScriptOutput"))
+                    |> ignore
 
                 // Run script asynchronously with real-time output
                 let scriptTask = ScriptService.runScript script onOutput onError
+
                 scriptTask.ContinueWith(fun (task: Task<int>) ->
                     Dispatcher.UIThread.InvokeAsync(fun () ->
                         isScriptRunning <- false
-                        scriptOutput <- scriptOutput + sprintf "\n=== Script completed with exit code: %d ===" task.Result
+
+                        scriptOutput <-
+                            scriptOutput
+                            + sprintf "\n=== Script completed with exit code: %d ===" task.Result
+
                         this.OnPropertyChanged("ScriptOutput")
                         this.OnPropertyChanged("CanRunScript")
-                        this.OnPropertyChanged("IsScriptRunning")
-                    ) |> ignore
-                ) |> ignore
+                        this.OnPropertyChanged("IsScriptRunning"))
+                    |> ignore)
+                |> ignore
             | _ -> ())
 
     do
