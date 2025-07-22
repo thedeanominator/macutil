@@ -259,12 +259,10 @@ module ScriptService =
                             // Note: osascript doesn't provide real-time output, so we'll get all output at the end
                             let escapedPath = tempFilePath.Replace("\"", "\\\"")
 
-                            let osascriptPrompt = "MacUtil needs your permission to make changes to your computer"
-
                             let osascriptCommand =
                                 sprintf
-                                    """osascript -e 'do shell script "\"%s\"" with prompt "\"%s\"" with administrator privileges'"""
-                                    escapedPath osascriptPrompt
+                                    """osascript -e 'do shell script "\"%s\"" with prompt \"MacUtil needs your permission to make changes to your computer\" with administrator privileges'"""
+                                    escapedPath
 
                             let startInfo = ProcessStartInfo()
                             startInfo.FileName <- "/bin/sh"
