@@ -10,8 +10,7 @@ open MacUtilGUI.ViewModels
 type App() =
     inherit Application()
 
-    override this.Initialize() =
-        AvaloniaXamlLoader.Load(this)
+    override this.Initialize() = AvaloniaXamlLoader.Load(this)
 
     override this.OnFrameworkInitializationCompleted() =
         match this.ApplicationLifetime with
@@ -23,12 +22,9 @@ type App() =
 
 module Program =
 
-    [<CompiledName "BuildAvaloniaApp">] 
-    let buildAvaloniaApp () = 
-        AppBuilder
-            .Configure<App>()
-            .UsePlatformDetect()
-            .LogToTrace()
+    [<CompiledName "BuildAvaloniaApp">]
+    let buildAvaloniaApp () =
+        AppBuilder.Configure<App>().UsePlatformDetect().LogToTrace()
 
     [<EntryPoint; STAThread>]
     let main argv =

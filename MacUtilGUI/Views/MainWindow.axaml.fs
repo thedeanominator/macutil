@@ -8,13 +8,12 @@ open Avalonia.Interactivity
 open MacUtilGUI.ViewModels
 open MacUtilGUI.Models
 
-type MainWindow () as this = 
-    inherit Window ()
+type MainWindow() as this =
+    inherit Window()
 
     do this.InitializeComponent()
 
-    member private this.InitializeComponent() =
-        AvaloniaXamlLoader.Load(this)
+    member private this.InitializeComponent() = AvaloniaXamlLoader.Load(this)
 
     member private this.OnScriptButtonClick(sender: obj, e: RoutedEventArgs) =
         match sender with
@@ -22,8 +21,7 @@ type MainWindow () as this =
             match button.Tag with
             | :? ScriptInfo as script ->
                 match this.DataContext with
-                | :? MainWindowViewModel as vm ->
-                    (vm.SelectScriptCommand :> ICommand).Execute(script)
+                | :? MainWindowViewModel as vm -> (vm.SelectScriptCommand :> ICommand).Execute(script)
                 | _ -> ()
             | _ -> ()
         | _ -> ()
