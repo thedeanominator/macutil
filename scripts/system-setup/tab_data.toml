@@ -1,0 +1,21 @@
+name = "System Setup"
+
+[[data]]
+name = "Development Setup"
+description = "This script is designed to handle the installation of various development dependencies and tools across different Linux distributions"
+script = "dev-setup.sh"
+
+[[data]]
+name = "Full System Cleanup"
+description = "This script is designed to remove unnecessary packages, clean old cache files, remove temporary files, and to empty the trash."
+script = "system-cleanup.sh"
+
+[[data]]
+name = "Fix Finder"
+description = "Finder optimizations for people without a mental disorder."
+script = "fix-finder.sh"
+
+[[data]]
+name = "Remove Animations"
+description = "This script is designed to remove snap packages and the snapd service from your system"
+script = "remove-animations.sh"

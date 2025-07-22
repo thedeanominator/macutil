@@ -1,0 +1,166 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MacUtilGUI.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+        x:Class="MacUtilGUI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding Title}"
+        Width="1000" Height="700"
+        MinWidth="800" MinHeight="600">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+        <!-- Header -->
+        <TextBlock Grid.Row="0" 
+                   Text="MacUtil Script Runner" 
+                   FontSize="24" 
+                   FontWeight="Bold" 
+                   HorizontalAlignment="Center" 
+                   Margin="0,0,0,20"/>
+        
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="2*,3*">
+            <!-- Left Panel - Script Categories -->
+            <Border Grid.Column="0" 
+                    BorderBrush="Gray" 
+                    BorderThickness="1" 
+                    CornerRadius="5" 
+                    Margin="0,0,10,0">
+                <ScrollViewer>
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Script Categories" 
+                                   FontSize="16" 
+                                   FontWeight="Bold" 
+                                   Margin="0,0,0,10"/>
+                        
+                        <ItemsControl ItemsSource="{Binding Categories}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Expander Header="{Binding Name}" IsExpanded="True" Margin="0,5">
+                                        <ItemsControl ItemsSource="{Binding Scripts}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="{Binding Name}"
+                                                            HorizontalAlignment="Stretch"
+                                                            Margin="5,2"
+                                                            Padding="10,5"
+                                                            Click="OnScriptButtonClick"
+                                                            Tag="{Binding}"
+                                                            Background="Transparent"
+                                                            BorderThickness="1"
+                                                            BorderBrush="LightGray"
+                                                            HorizontalContentAlignment="Left"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+            
+            <!-- Right Panel - Script Details and Output -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                <!-- Script Details Section -->
+                <Border Grid.Row="0"
+                        BorderBrush="Gray" 
+                        BorderThickness="1" 
+                        CornerRadius="5" 
+                        Margin="10,0,0,5">
+                    <ScrollViewer Margin="15" MaxHeight="300">
+                        <StackPanel>
+                            <TextBlock Text="Script Details" 
+                                       FontSize="16" 
+                                       FontWeight="Bold" 
+                                       Margin="0,0,0,15"/>
+                            
+                            <StackPanel IsVisible="{Binding CanRunScript}">
+                                <TextBlock Text="{Binding SelectedScriptName}" 
+                                           FontSize="18" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,10"/>
+                                
+                                <TextBlock Text="Description:" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding SelectedScriptDescription}" 
+                                           TextWrapping="Wrap" 
+                                           Margin="0,0,0,15"/>
+                                
+                                <TextBlock Text="Category:" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding SelectedScriptCategory}" 
+                                           Margin="0,0,0,15"/>
+                                
+                                <TextBlock Text="Script File:" 
+                                           FontWeight="Bold" 
+                                           Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding SelectedScriptFile}" 
+                                           Margin="0,0,0,15"/>
+                                
+                                <Button Content="Run Script" 
+                                        Command="{Binding RunScriptCommand}"
+                                        IsEnabled="{Binding CanRunScript}"
+                                        HorizontalAlignment="Left"
+                                        Padding="20,10"
+                                        Background="DodgerBlue"
+                                        Foreground="White"
+                                        FontWeight="Bold"/>
+                            </StackPanel>
+                            
+                            <TextBlock Text="Select a script from the left panel to view details and run it."
+                                       IsVisible="{Binding !CanRunScript}"
+                                       FontStyle="Italic"
+                                       Foreground="Gray"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+                
+                <!-- Script Output Section -->
+                <Border Grid.Row="1"
+                        BorderBrush="Gray" 
+                        BorderThickness="1" 
+                        CornerRadius="5" 
+                        Margin="10,5,0,0">
+                    <Grid RowDefinitions="Auto,*" Margin="15">
+                        <TextBlock Grid.Row="0"
+                                   Text="Script Output" 
+                                   FontSize="16" 
+                                   FontWeight="Bold" 
+                                   Margin="0,0,0,10"/>
+                        
+                        <ScrollViewer Grid.Row="1" 
+                                      Background="Black"
+                                      Foreground="White">
+                            <TextBlock Text="{Binding ScriptOutput}"
+                                       FontFamily="Consolas,Monaco,monospace"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Margin="10"
+                                       Background="Black"
+                                       Foreground="LightGreen"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+        
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Center" 
+                    Margin="0,20,0,0">
+            <TextBlock Text="MacUtil GUI - Powered by Avalonia UI" 
+                       FontSize="12" 
+                       Foreground="Gray"/>
+        </StackPanel>
+    </Grid>
+</Window>
