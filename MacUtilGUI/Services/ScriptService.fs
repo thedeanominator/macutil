@@ -15,11 +15,11 @@ module ScriptService =
 
     // Function to check if a script needs elevation (contains sudo, $ESCALATION_TOOL, etc.)
     let needsElevation (scriptContent: string) : bool =
-        scriptContent.Contains("sudo ") ||
-        scriptContent.Contains("$ESCALATION_TOOL") ||
-        scriptContent.Contains("${ESCALATION_TOOL}") ||
-        scriptContent.Contains("/usr/bin/sudo") ||
-        scriptContent.Contains("/bin/sudo")
+        scriptContent.Contains("sudo ")
+        || scriptContent.Contains("$ESCALATION_TOOL")
+        || scriptContent.Contains("${ESCALATION_TOOL}")
+        || scriptContent.Contains("/usr/bin/sudo")
+        || scriptContent.Contains("/bin/sudo")
 
     let getEmbeddedResource (resourcePath: string) : string option =
         try
@@ -221,20 +221,27 @@ module ScriptService =
                     // Check if script needs elevation
                     if needsElevation finalScriptContent then
                         onOutput "Script requires administrator privileges..."
-                        
+
                         // Replace $ESCALATION_TOOL with empty string since we'll handle elevation via osascript
-                        let cleanedScript = finalScriptContent.Replace("$ESCALATION_TOOL ", "").Replace("${ESCALATION_TOOL} ", "").Replace("sudo ", "")
-                        
+                        let cleanedScript =
+                            finalScriptContent
+                                .Replace("$ESCALATION_TOOL ", "")
+                                .Replace("${ESCALATION_TOOL} ", "")
+                                .Replace("sudo ", "")
+
                         // Create a temporary script file for elevation
                         let tempDir = Path.GetTempPath()
                         let scriptFileName = Path.GetFileName(scriptInfo.Script)
-                        let tempFileName = sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
+
+                        let tempFileName =
+                            sprintf "%s_%s" (Guid.NewGuid().ToString("N").Substring(0, 8)) scriptFileName
+
                         let tempFilePath = Path.Combine(tempDir, tempFileName)
-                        
+
                         try
                             // Write script content to temporary file
                             File.WriteAllText(tempFilePath, cleanedScript)
-                            
+
                             // Make the temporary file executable
                             let chmodStartInfo = ProcessStartInfo()
                             chmodStartInfo.FileName <- "/bin/chmod"
@@ -242,16 +249,21 @@ module ScriptService =
                             chmodStartInfo.UseShellExecute <- false
                             chmodStartInfo.CreateNoWindow <- true
                             let chmodProc = Process.Start(chmodStartInfo)
+
                             if chmodProc <> null then
                                 chmodProc.WaitForExit()
 
                             onOutput "Prompting for administrator password..."
-                            
+
                             // Use osascript to run the script with elevated privileges
                             // Note: osascript doesn't provide real-time output, so we'll get all output at the end
                             let escapedPath = tempFilePath.Replace("\"", "\\\"")
-                            let osascriptCommand = sprintf """osascript -e 'do shell script "\"%s\"" with administrator privileges'""" escapedPath
-                            
+
+                            let osascriptCommand =
+                                sprintf
+                                    """osascript -e 'do shell script "\"%s\"" with administrator privileges'"""
+                                    escapedPath
+
                             let startInfo = ProcessStartInfo()
                             startInfo.FileName <- "/bin/sh"
                             startInfo.Arguments <- sprintf "-c \"%s\"" osascriptCommand
@@ -265,22 +277,24 @@ module ScriptService =
                             if proc <> null then
                                 onOutput "Script is running with administrator privileges..."
                                 onOutput "Note: Output will appear when script completes (osascript limitation)"
-                                
+
                                 // Wait for the process to complete
                                 proc.WaitForExit()
-                                
+
                                 // Get all output at once (osascript limitation)
                                 let output = proc.StandardOutput.ReadToEnd()
                                 let error = proc.StandardError.ReadToEnd()
-                                
+
                                 // Display output line by line for better readability
                                 if not (String.IsNullOrEmpty(output)) then
-                                    let lines = output.Split([|'\n'; '\r'|], StringSplitOptions.RemoveEmptyEntries)
+                                    let lines = output.Split([| '\n'; '\r' |], StringSplitOptions.RemoveEmptyEntries)
+
                                     for line in lines do
                                         onOutput line
-                                        
+
                                 if not (String.IsNullOrEmpty(error)) then
-                                    let lines = error.Split([|'\n'; '\r'|], StringSplitOptions.RemoveEmptyEntries)
+                                    let lines = error.Split([| '\n'; '\r' |], StringSplitOptions.RemoveEmptyEntries)
+
                                     for line in lines do
                                         onError line
 
