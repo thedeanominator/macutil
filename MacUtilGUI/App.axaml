@@ -1,8 +1,8 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="MacUtilGUI.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
+    <!-- Sleek Fluent Dark Theme for modern look -->
 
     <Application.DataTemplates>
         <!-- <local:ViewLocator /> -->
@@ -10,5 +10,20 @@
   
     <Application.Styles>
         <FluentTheme />
+        <!-- Accent color and glassy effect -->
+        <Style Selector="Border.sleek-glass">
+            <Setter Property="Background" Value="#CC22272E"/>
+            <Setter Property="BoxShadow" Value="0 4 32 0 #000A"/>
+        </Style>
+        <Style Selector="Button.sleek-accent">
+            <Setter Property="Background" Value="#FF4F8EF7"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="18,8"/>
+            <Setter Property="FontFamily" Value="Inter,Segoe UI,Helvetica Neue,Arial,sans-serif"/>
+        </Style>
+        <Style Selector="Button.sleek-accent:pointerover">
+            <Setter Property="Background" Value="#FF2563EB"/>
+        </Style>
     </Application.Styles>
 </Application>

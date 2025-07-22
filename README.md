@@ -10,7 +10,6 @@
 # HEAVY DEVELOPMENT
 
 - Make a theme that looks good
-- On sudo elevation, make it so the user can see the password prompt outside terminal
 - Look at creating or installing a package into /Applications or other methods like copying to ~/.local/bin - _Update: Waiting on Apple Developer License Approval_
 
 # Installation

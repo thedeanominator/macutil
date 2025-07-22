@@ -18,7 +18,6 @@ module ScriptService =
         scriptContent.Contains("sudo ") ||
         scriptContent.Contains("$ESCALATION_TOOL") ||
         scriptContent.Contains("${ESCALATION_TOOL}") ||
-        scriptContent.Contains("require_escalation") ||
         scriptContent.Contains("/usr/bin/sudo") ||
         scriptContent.Contains("/bin/sudo")
 
