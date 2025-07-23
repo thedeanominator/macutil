@@ -25,7 +25,13 @@ module ScriptService =
                 if trimmed.Contains("tty -s") || 
                    trimmed.Contains("[ -t 0 ]") || 
                    trimmed.Contains("[[ -t 0 ]]") ||
-                   trimmed.Contains("if tty") then
+                   trimmed.Contains("if tty") ||
+                   trimmed.Contains("test -t 0") ||
+                   trimmed.Contains("[ -t 1 ]") ||
+                   trimmed.Contains("[[ -t 1 ]]") ||
+                   trimmed.Contains("test -t 1") ||
+                   trimmed.Contains("isatty") ||
+                   trimmed.Contains("stdin is not a TTY") then
                     "# TTY check disabled for .app bundle execution: " + line
                     
                 // Force non-interactive mode for package managers
@@ -50,20 +56,42 @@ module ScriptService =
                 elif trimmed.Contains("command -v brew") then
                     line + " 2>/dev/null"
                     
+                // Handle common non-interactive mode messages
+                elif trimmed.Contains("Running in non-interactive mode") then
+                    "# " + line + " # Suppressed for GUI execution"
+                    
                 else
                     line)
         
-        // Add non-interactive environment setup at the beginning
+        // Add comprehensive non-interactive environment setup at the beginning
         let header = """#!/bin/bash
+# Force non-interactive mode for GUI execution
 export TERM=${TERM:-xterm-256color}
+export DEBIAN_FRONTEND=noninteractive
+export CI=true
+export NONINTERACTIVE=1
+export FORCE_NONINTERACTIVE=1
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
 export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_ANALYTICS=1
+export HOMEBREW_NO_INSECURE_REDIRECT=1
 
-# Disable TTY-related functions that cause issues
+# Override TTY-related functions and commands that cause issues
 function tty() {
     return 1  # Always return "not a TTY"
 }
+
+function isatty() {
+    return 1  # Always return "not a TTY"
+}
+
+# Redirect stdin from /dev/null to ensure non-interactive behavior
+exec < /dev/null
+
+# Set bash options for non-interactive execution
+set +o posix  # Disable POSIX mode which can cause TTY issues
+set +m        # Disable job control
 
 """
         
@@ -328,8 +356,28 @@ function tty() {
                             // Use osascript to run the script with elevated privileges
                             // Note: osascript doesn't provide real-time output, so we'll get all output at the end
                             
-                            // Create a wrapper script that sets environment and runs the main script
-                            let wrapperScript = sprintf "#!/bin/bash\nexport TERM=xterm-256color\nexport HOMEBREW_NO_ENV_HINTS=1\nexport HOMEBREW_NO_INSTALL_CLEANUP=1\nexport HOMEBREW_NO_AUTO_UPDATE=1\nexec \"%s\"\n" tempFilePath
+                            // Create a wrapper script that sets comprehensive environment and runs the main script
+                            let wrapperScript = 
+                                "#!/bin/bash\n" +
+                                "export TERM=xterm-256color\n" +
+                                "export DEBIAN_FRONTEND=noninteractive\n" +
+                                "export CI=true\n" +
+                                "export NONINTERACTIVE=1\n" +
+                                "export FORCE_NONINTERACTIVE=1\n" +
+                                "export HOMEBREW_NO_ENV_HINTS=1\n" +
+                                "export HOMEBREW_NO_INSTALL_CLEANUP=1\n" +
+                                "export HOMEBREW_NO_AUTO_UPDATE=1\n" +
+                                "export HOMEBREW_NO_ANALYTICS=1\n" +
+                                "export HOMEBREW_NO_INSECURE_REDIRECT=1\n" +
+                                "\n" +
+                                "# Override TTY functions for elevated execution\n" +
+                                "function tty() { return 1; }\n" +
+                                "function isatty() { return 1; }\n" +
+                                "\n" +
+                                "# Redirect stdin from /dev/null\n" +
+                                "exec < /dev/null\n" +
+                                "\n" +
+                                sprintf "exec \"%s\"\n" tempFilePath
                             
                             let wrapperPath = tempFilePath + "_wrapper.sh"
                             File.WriteAllText(wrapperPath, wrapperScript)
@@ -436,18 +484,18 @@ function tty() {
                             startInfo.RedirectStandardOutput <- true
                             startInfo.RedirectStandardError <- true
                             
-                            // Set environment variables to handle non-TTY execution
+                            // Set comprehensive environment variables to handle non-TTY execution
                             startInfo.EnvironmentVariables.["TERM"] <- "xterm-256color"
                             startInfo.EnvironmentVariables.["DEBIAN_FRONTEND"] <- "noninteractive"
                             startInfo.EnvironmentVariables.["CI"] <- "true"
+                            startInfo.EnvironmentVariables.["NONINTERACTIVE"] <- "1"
+                            startInfo.EnvironmentVariables.["FORCE_NONINTERACTIVE"] <- "1"
                             startInfo.EnvironmentVariables.["HOMEBREW_NO_ENV_HINTS"] <- "1"
                             startInfo.EnvironmentVariables.["HOMEBREW_NO_INSTALL_CLEANUP"] <- "1"
                             startInfo.EnvironmentVariables.["HOMEBREW_NO_AUTO_UPDATE"] <- "1"
-                            startInfo.EnvironmentVariables.["NONINTERACTIVE"] <- "1"
+                            startInfo.EnvironmentVariables.["HOMEBREW_NO_ANALYTICS"] <- "1"
+                            startInfo.EnvironmentVariables.["HOMEBREW_NO_INSECURE_REDIRECT"] <- "1"
                             
-                            // Force scripts to run in non-interactive mode
-                            startInfo.EnvironmentVariables.["FORCE_NONINTERACTIVE"] <- "1"
-
                             let proc = Process.Start(startInfo)
 
                             if proc <> null then
@@ -594,13 +642,15 @@ function tty() {
                                     startInfo.RedirectStandardOutput <- true
                                     startInfo.RedirectStandardError <- true
                                     
-                                    // Set environment variables to handle non-TTY execution
+                                    // Set comprehensive environment variables to handle non-TTY execution
                                     startInfo.EnvironmentVariables.["TERM"] <- "xterm-256color"
                                     startInfo.EnvironmentVariables.["DEBIAN_FRONTEND"] <- "noninteractive"
                                     startInfo.EnvironmentVariables.["CI"] <- "true"
                                     startInfo.EnvironmentVariables.["HOMEBREW_NO_ENV_HINTS"] <- "1"
                                     startInfo.EnvironmentVariables.["HOMEBREW_NO_INSTALL_CLEANUP"] <- "1"
                                     startInfo.EnvironmentVariables.["HOMEBREW_NO_AUTO_UPDATE"] <- "1"
+                                    startInfo.EnvironmentVariables.["HOMEBREW_NO_ANALYTICS"] <- "1"
+                                    startInfo.EnvironmentVariables.["HOMEBREW_NO_INSECURE_REDIRECT"] <- "1"
                                     startInfo.EnvironmentVariables.["NONINTERACTIVE"] <- "1"
                                     
                                     // Force scripts to run in non-interactive mode

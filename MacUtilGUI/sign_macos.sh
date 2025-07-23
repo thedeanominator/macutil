@@ -4,8 +4,8 @@
 # This script signs your app bundles for distribution outside the App Store
 
 # Configuration - UPDATE THESE VALUES
-DEVELOPER_ID="Developer ID Application: Your Name (TEAM_ID)"
-APP_BUNDLE_PATH="./dist/MacUtil-Universal.app"  # or whichever bundle you want to sign
+DEVELOPER_ID="Developer ID Application: CT Tech Group LLC (8ZHX2A9ALF)"
+APP_BUNDLE_PATH="./dist/MacUtil-Universal.app"  # Universal app bundle (recommended)
 ENTITLEMENTS_FILE="./MacUtilGUI.entitlements"
 
 # Colors for output

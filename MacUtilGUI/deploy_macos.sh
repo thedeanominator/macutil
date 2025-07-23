@@ -143,36 +143,120 @@ EOF
 }
 
 # Build for Intel x64 Macs
-if ! create_app_bundle "osx-x64" "Intel"; then
+print_status "Building Intel x64 binary..."
+dotnet publish -c Release -r osx-x64 -p:UseAppHost=true --self-contained true -o ./bin/Release/net9.0/publish/osx-x64/
+if [ $? -ne 0 ]; then
+    print_error "Intel x64 build failed"
     exit 1
 fi
-echo
+print_success "Intel x64 build successful"
 
 # Build for Apple Silicon ARM64 Macs
-if ! create_app_bundle "osx-arm64" "AppleSilicon"; then
+print_status "Building Apple Silicon ARM64 binary..."
+dotnet publish -c Release -r osx-arm64 -p:UseAppHost=true --self-contained true -o ./bin/Release/net9.0/publish/osx-arm64/
+if [ $? -ne 0 ]; then
+    print_error "Apple Silicon ARM64 build failed"
     exit 1
 fi
+print_success "Apple Silicon ARM64 build successful"
 echo
 
-# Create universal app bundle using dotnet-bundle (if available)
-print_status "Attempting to create universal app bundle using dotnet-bundle..."
+# Create Universal App Bundle with lipo
+print_status "Creating Universal App Bundle with both architectures..."
 
-# First, try with Intel build
-dotnet msbuild -t:BundleApp -p:RuntimeIdentifier=osx-x64 -p:Configuration=Release -p:UseAppHost=true 2>/dev/null
+# Create the universal app bundle structure
+universal_app="./dist/${BUNDLE_NAME}-Universal.app"
+mkdir -p "$universal_app/Contents/MacOS"
+mkdir -p "$universal_app/Contents/Resources"
 
-if [ $? -eq 0 ] && [ -d "./bin/Release/net9.0/osx-x64/publish/${BUNDLE_NAME}.app" ]; then
-    print_success "Universal app bundle created via dotnet-bundle"
-    cp -R "./bin/Release/net9.0/osx-x64/publish/${BUNDLE_NAME}.app" "./dist/${BUNDLE_NAME}-Universal.app"
-    
-    # Update the universal bundle with proper icon
-    if [ -f "MacUtilGUI.icns" ]; then
-        cp "MacUtilGUI.icns" "./dist/${BUNDLE_NAME}-Universal.app/Contents/Resources/"
-    fi
-    
-    universal_size=$(du -sh "./dist/${BUNDLE_NAME}-Universal.app" | cut -f1)
-    print_status "Universal bundle size: $universal_size"
+# Create universal binary using lipo
+print_status "Creating universal binary with lipo..."
+lipo -create \
+    "./bin/Release/net9.0/publish/osx-x64/$APP_NAME" \
+    "./bin/Release/net9.0/publish/osx-arm64/$APP_NAME" \
+    -output "$universal_app/Contents/MacOS/$APP_NAME"
+
+if [ $? -ne 0 ]; then
+    print_error "Failed to create universal binary with lipo"
+    exit 1
+fi
+
+# Copy all dependencies from one of the builds (they should be identical except for the main executable)
+print_status "Copying dependencies..."
+# Copy everything except the main executable
+rsync -av --exclude="$APP_NAME" "./bin/Release/net9.0/publish/osx-x64/" "$universal_app/Contents/MacOS/"
+
+# Verify universal binary
+print_status "Verifying universal binary..."
+file "$universal_app/Contents/MacOS/$APP_NAME"
+lipo -info "$universal_app/Contents/MacOS/$APP_NAME"
+
+# Create Info.plist for universal app
+cat > "$universal_app/Contents/Info.plist" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIconFile</key>
+    <string>MacUtilGUI.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>$BUNDLE_IDENTIFIER</string>
+    <key>CFBundleName</key>
+    <string>$BUNDLE_NAME</string>
+    <key>CFBundleDisplayName</key>
+    <string>MacUtil GUI</string>
+    <key>CFBundleVersion</key>
+    <string>$VERSION</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>CFBundleExecutable</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+    <key>NSRequiresAquaSystemAppearance</key>
+    <false/>
+    <key>NSHumanReadableCopyright</key>
+    <string>$COPYRIGHT</string>
+</dict>
+</plist>
+EOF
+
+# Copy icon file
+if [ -f "MacUtilGUI.icns" ]; then
+    cp "MacUtilGUI.icns" "$universal_app/Contents/Resources/"
+    print_success "Icon copied to universal app bundle"
 else
-    print_warning "dotnet-bundle not available or failed, using separate bundles"
+    print_warning "Icon file MacUtilGUI.icns not found"
+fi
+
+# Make the executable file executable
+chmod +x "$universal_app/Contents/MacOS/$APP_NAME"
+
+# Show bundle size
+universal_size=$(du -sh "$universal_app" | cut -f1)
+print_success "Universal app bundle created: $universal_app"
+print_status "Universal bundle size: $universal_size"
+
+# Optionally create individual architecture bundles for compatibility
+print_status "Creating individual architecture bundles for compatibility..."
+if ! create_app_bundle "osx-x64" "Intel"; then
+    print_warning "Intel-only bundle creation failed"
+fi
+
+if ! create_app_bundle "osx-arm64" "AppleSilicon"; then
+    print_warning "Apple Silicon-only bundle creation failed"
 fi
 
 echo
@@ -184,11 +268,9 @@ ls -la ./dist/*.app 2>/dev/null || echo "No .app bundles found in ./dist/"
 echo
 print_status "🎯 Usage Instructions:"
 echo "─────────────────────────────────────────────────────────"
-echo "• Intel Mac users: Use MacUtil-Intel.app"
-echo "• Apple Silicon Mac users: Use MacUtil-AppleSilicon.app"
-if [ -d "./dist/${BUNDLE_NAME}-Universal.app" ]; then
-    echo "• Universal (any Mac): Use MacUtil-Universal.app"
-fi
+echo "• Universal (any Mac): Use MacUtil-Universal.app (RECOMMENDED)"
+echo "• Intel Mac users: Use MacUtil-Intel.app (if available)"
+echo "• Apple Silicon Mac users: Use MacUtil-AppleSilicon.app (if available)"
 echo
 print_status "📝 Next Steps for Distribution:"
 echo "─────────────────────────────────────────────────────────"
