@@ -15,33 +15,38 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Border Background="#CCF5F7FA" Padding="24" BoxShadow="0 8 32 0 #0006">
+    <Border Background="Transparent" Padding="20" Classes="macos-window">
     <Grid RowDefinitions="Auto,*,Auto" Margin="0">
         <!-- Header -->
         <TextBlock Grid.Row="0" 
-                   Text="MacUtil Script Runner" 
-                   FontSize="40" 
-                   FontWeight="Bold" 
-                   FontFamily=".AppleSystemUIFont,Segoe UI,Helvetica Neue,Arial,sans-serif"
+                   Text="macOS Utility" 
+                   FontSize="32" 
+                   Classes="macos-title"
                    HorizontalAlignment="Center" 
-                   Margin="0,0,0,36"
-                   Foreground="#FF3B82F6"/>
-        
+                   Margin="0,0,0,0"/>
+        <!-- Sub Header -->
+        <TextBlock Grid.Row="0"
+                   Text="Homebrew installs and System Tweaks"
+                   FontSize="18"
+                   Classes="macos-body"
+                   HorizontalAlignment="Center"
+                   Margin="0,40,0,10"/>
+
         <!-- Main Content -->
         <Grid Grid.Row="1" ColumnDefinitions="2*,3*" Margin="0,0,0,0">
             <!-- Left Panel - Script Categories -->
-            <Border Grid.Column="0" Classes="sleek-glass" Margin="0,0,24,0" Background="#CC333333" CornerRadius="18" BoxShadow="0 2 12 0 #0003">
+            <Border Grid.Column="0" Classes="macos-panel" Margin="0,0,16,0" CornerRadius="10">
                 <ScrollViewer>
-                    <StackPanel Margin="18">
+                    <StackPanel Margin="16">
                         <TextBlock Text="Script Categories" 
-                                   FontSize="20" 
-                                   FontWeight="Bold" 
-                                   Margin="0,0,0,18"/>
+                                   FontSize="18" 
+                                   Classes="macos-title"
+                                   Margin="0,0,0,16"/>
 
                         <TabControl ItemsSource="{Binding Categories}" Margin="0,0,0,0" >
                             <TabControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:ScriptCategory">
-                                    <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                    <TextBlock Text="{Binding Name}" Classes="macos-body" FontWeight="SemiBold"/>
                                 </DataTemplate>
                             </TabControl.ItemTemplate>
                             <TabControl.ContentTemplate>
@@ -51,19 +56,10 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="models:ScriptInfo">
                                                     <Button Content="{Binding Name}"
-                                                            HorizontalAlignment="Stretch"
-                                                            Margin="6,4"
-                                                            Padding="14,8"
                                                             Click="OnScriptButtonClick"
                                                             Tag="{Binding}"
-                                                            Background="#FFF0F4F8"
-                                                            BorderThickness="0"
-                                                            CornerRadius="8"
-                                                            Foreground="#FF22272E"
-                                                            FontWeight="Medium"
-                                                            FontFamily=".AppleSystemUIFont,Segoe UI,Helvetica Neue,Arial,sans-serif"
-                                                            HorizontalContentAlignment="Left"
-                                                            Classes="sleek-accent"/>
+                                                            Classes="macos-list-item"
+                                                            Margin="0,1"/>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -78,75 +74,77 @@
             <!-- Right Panel - Script Details and Output -->
             <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="0">
                 <!-- Script Details Section -->
-                <Border Grid.Row="0" Classes="sleek-glass" Margin="0,0,0,18" Background="#CC333333" CornerRadius="18" BoxShadow="0 2 12 0 #0003">
-                    <ScrollViewer Margin="18" MaxHeight="320">
+                <Border Grid.Row="0" Classes="macos-content" Margin="0,0,0,16" CornerRadius="10">
+                    <ScrollViewer Margin="16" MaxHeight="280">
                         <StackPanel>
                             <TextBlock Text="Script Details" 
-                                       FontSize="20" 
-                                       FontWeight="Bold" 
-                                       Margin="0,0,0,18"/>
+                                       FontSize="18" 
+                                       Classes="macos-title"
+                                       Margin="0,0,0,16"/>
                             
                             <StackPanel IsVisible="{Binding CanRunScript}" Margin="0,0,0,8">
                                 <TextBlock Text="{Binding SelectedScriptName}" 
-                                           FontSize="22" 
-                                           FontWeight="Bold" 
+                                           FontSize="20" 
+                                           Classes="macos-title"
                                            Margin="0,0,0,12"/>
                                 
                                 <TextBlock Text="Description:" 
-                                           FontWeight="Bold" 
-                                           Margin="0,0,0,5"/>
+                                           Classes="macos-body"
+                                           FontWeight="SemiBold" 
+                                           Margin="0,0,0,4"/>
                                 <TextBlock Text="{Binding SelectedScriptDescription}" 
+                                           Classes="macos-body"
                                            TextWrapping="Wrap" 
-                                           Margin="0,0,0,15"/>
+                                           Margin="0,0,0,12"/>
                                 
                                 <TextBlock Text="Category:" 
-                                           FontWeight="Bold" 
-                                           Margin="0,0,0,5"/>
+                                           Classes="macos-body"
+                                           FontWeight="SemiBold" 
+                                           Margin="0,0,0,4"/>
                                 <TextBlock Text="{Binding SelectedScriptCategory}" 
-                                           Margin="0,0,0,15"/>
+                                           Classes="macos-body"
+                                           Margin="0,0,0,12"/>
                                 
                                 <TextBlock Text="Script File:" 
-                                           FontWeight="Bold" 
-                                           Margin="0,0,0,5"/>
+                                           Classes="macos-body"
+                                           FontWeight="SemiBold" 
+                                           Margin="0,0,0,4"/>
                                 <TextBlock Text="{Binding SelectedScriptFile}" 
-                                           Margin="0,0,0,15"/>
+                                           Classes="macos-secondary"
+                                           Margin="0,0,0,16"/>
                                 
                                 <Button Content="Run Script" 
                                         Command="{Binding RunScriptCommand}"
                                         IsEnabled="{Binding CanRunScript}"
                                         HorizontalAlignment="Left"
-                                        Classes="sleek-accent"
-                                        FontSize="16"
-                                        Padding="24,10"
-                                        CornerRadius="12"/>
+                                        Classes="macos-accent"
+                                        FontSize="14"
+                                        Padding="20,10"/>
                             </StackPanel>
                             
                             <TextBlock Text="Select a script from the left panel to view details and run it."
                                        IsVisible="{Binding !CanRunScript}"
+                                       Classes="macos-secondary"
                                        FontStyle="Italic"
-                                       Foreground="#FF7B8794"
                                        Margin="0,12,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
                 
                 <!-- Script Output Section -->
-                <Border Grid.Row="1" Classes="sleek-glass" Margin="0,0,0,0" Background="#CC333333" CornerRadius="18" BoxShadow="0 2 12 0 #0003">
-                    <Grid RowDefinitions="Auto,*" Margin="18">
+                <Border Grid.Row="1" Classes="macos-content" Margin="0,0,0,0" CornerRadius="10">
+                    <Grid RowDefinitions="Auto,*" Margin="16">
                         <TextBlock Grid.Row="0"
                                    Text="Script Output" 
-                                   FontSize="20" 
-                                   FontWeight="Bold" 
-                                   Margin="0,0,0,18"/>
+                                   FontSize="18" 
+                                   Classes="macos-title"
+                                   Margin="0,0,0,16"/>
                         
-                        <ScrollViewer Grid.Row="1" Background="#FF181C20" Foreground="White">
+                        <ScrollViewer Grid.Row="1" Classes="macos-terminal" CornerRadius="6" Padding="12">
                             <TextBlock Text="{Binding ScriptOutput}"
-                                       FontFamily="JetBrains Mono,Menlo,Monaco,monospace"
-                                       FontSize="15"
+                                       Classes="macos-terminal"
                                        TextWrapping="Wrap"
-                                       Margin="12"
-                                       Background="Transparent"
-                                       Foreground="#FF3B82F6"/>
+                                       Background="Transparent"/>
                         </ScrollViewer>
                     </Grid>
                 </Border>
@@ -157,10 +155,10 @@
         <StackPanel Grid.Row="2" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
-                    Margin="0,36,0,0">
-            <TextBlock Text="MacUtil GUI – Powered by Hamsters" 
-                       FontSize="14" 
-                       Foreground="#FF3B82F6"/>
+                    Margin="0,24,0,0">
+            <TextBlock Text="MacUtil – Powered by Hamsters" 
+                       FontSize="12" 
+                       Classes="macos-secondary"/>
         </StackPanel>
     </Grid>
     </Border>
