@@ -13,6 +13,73 @@ module ScriptService =
 
     let assembly = Assembly.GetExecutingAssembly()
 
+    // Function to preprocess scripts for non-TTY environments
+    let preprocessScriptForNonTTY (scriptContent: string) : string =
+        let lines = scriptContent.Split([| '\n'; '\r' |], StringSplitOptions.None)
+        let processedLines = 
+            lines
+            |> Array.map (fun line ->
+                let trimmed = line.Trim()
+                
+                // Skip TTY checks that cause issues in .app bundles
+                if trimmed.Contains("tty -s") || 
+                   trimmed.Contains("[ -t 0 ]") || 
+                   trimmed.Contains("[[ -t 0 ]]") ||
+                   trimmed.Contains("if tty") then
+                    "# TTY check disabled for .app bundle execution: " + line
+                    
+                // Force non-interactive mode for package managers
+                elif trimmed.StartsWith("brew install") && not (trimmed.Contains("--help")) then
+                    // Add --quiet flag to reduce output and avoid prompts
+                    if not (trimmed.Contains("--quiet")) then
+                        line.Replace("brew install", "brew install --quiet")
+                    else
+                        line
+                elif trimmed.StartsWith("brew ") && not (trimmed.Contains("--help")) && not (trimmed.Contains("install")) then
+                    // For other brew commands, just ensure they run quietly
+                    if not (trimmed.Contains("--quiet")) && (trimmed.Contains("update") || trimmed.Contains("upgrade")) then
+                        line + " --quiet"
+                    else
+                        line
+                    
+                // Add --yes flag to apt commands (if any)
+                elif trimmed.Contains("apt-get ") && not (trimmed.Contains("-y")) && not (trimmed.Contains("--yes")) then
+                    line.Replace("apt-get ", "apt-get -y ")
+                    
+                // Disable Homebrew's automatic checking
+                elif trimmed.Contains("command -v brew") then
+                    line + " 2>/dev/null"
+                    
+                else
+                    line)
+        
+        // Add non-interactive environment setup at the beginning
+        let header = """#!/bin/bash
+export TERM=${TERM:-xterm-256color}
+export HOMEBREW_NO_ENV_HINTS=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
+export HOMEBREW_NO_AUTO_UPDATE=1
+
+# Disable TTY-related functions that cause issues
+function tty() {
+    return 1  # Always return "not a TTY"
+}
+
+"""
+        
+        // Combine header with processed script content
+        let processedScript = String.Join("\n", processedLines)
+        
+        // If script already has a shebang, replace it; otherwise add header
+        if processedScript.StartsWith("#!") then
+            let firstNewLine = processedScript.IndexOf('\n')
+            if firstNewLine > 0 then
+                header + processedScript.Substring(firstNewLine + 1)
+            else
+                header + processedScript
+        else
+            header + processedScript
+
     // Function to check if a script needs elevation (contains sudo, $ESCALATION_TOOL, etc.)
     let needsElevation (scriptContent: string) : bool =
         scriptContent.Contains("sudo ")
@@ -217,6 +284,9 @@ module ScriptService =
                                 scriptContent
                         else
                             scriptContent
+                    
+                    // Preprocess the script for non-TTY execution
+                    let preprocessedScript = preprocessScriptForNonTTY finalScriptContent
 
                     // Check if script needs elevation
                     if needsElevation finalScriptContent then
@@ -224,7 +294,7 @@ module ScriptService =
 
                         // Replace $ESCALATION_TOOL with empty string since we'll handle elevation via osascript
                         let cleanedScript =
-                            finalScriptContent
+                            preprocessedScript
                                 .Replace("$ESCALATION_TOOL ", "")
                                 .Replace("${ESCALATION_TOOL} ", "")
                                 .Replace("sudo ", "")
@@ -257,12 +327,25 @@ module ScriptService =
 
                             // Use osascript to run the script with elevated privileges
                             // Note: osascript doesn't provide real-time output, so we'll get all output at the end
-                            let escapedPath = tempFilePath.Replace("\"", "\\\"")
+                            
+                            // Create a wrapper script that sets environment and runs the main script
+                            let wrapperScript = sprintf "#!/bin/bash\nexport TERM=xterm-256color\nexport HOMEBREW_NO_ENV_HINTS=1\nexport HOMEBREW_NO_INSTALL_CLEANUP=1\nexport HOMEBREW_NO_AUTO_UPDATE=1\nexec \"%s\"\n" tempFilePath
+                            
+                            let wrapperPath = tempFilePath + "_wrapper.sh"
+                            File.WriteAllText(wrapperPath, wrapperScript)
+                            
+                            // Make wrapper executable
+                            let chmodWrapperInfo = ProcessStartInfo()
+                            chmodWrapperInfo.FileName <- "/bin/chmod"
+                            chmodWrapperInfo.Arguments <- sprintf "+x \"%s\"" wrapperPath
+                            chmodWrapperInfo.UseShellExecute <- false
+                            chmodWrapperInfo.CreateNoWindow <- true
+                            let chmodWrapperProc = Process.Start(chmodWrapperInfo)
+                            if chmodWrapperProc <> null then
+                                chmodWrapperProc.WaitForExit()
 
                             let osascriptCommand =
-                                sprintf
-                                    """osascript -e 'do shell script "\"%s\"" with administrator privileges'"""
-                                    escapedPath
+                                sprintf """osascript -e 'do shell script "\"%s\"" with prompt \"MacUtil needs your permission to make changes to your computer\" with administrator privileges'""" wrapperPath
 
                             let startInfo = ProcessStartInfo()
                             startInfo.FileName <- "/bin/sh"
@@ -305,10 +388,17 @@ module ScriptService =
                                 onError errorMsg
                                 -1
                         finally
-                            // Clean up temporary file
+                            // Clean up temporary files
                             if File.Exists(tempFilePath) then
                                 try
                                     File.Delete(tempFilePath)
+                                with _ ->
+                                    () // Ignore cleanup errors
+                            
+                            let wrapperPath = tempFilePath + "_wrapper.sh"
+                            if File.Exists(wrapperPath) then
+                                try
+                                    File.Delete(wrapperPath)
                                 with _ ->
                                     () // Ignore cleanup errors
                     else
@@ -323,7 +413,7 @@ module ScriptService =
 
                         try
                             // Write script content to temporary file
-                            File.WriteAllText(tempFilePath, finalScriptContent)
+                            File.WriteAllText(tempFilePath, preprocessedScript)
 
                             // Make the temporary file executable
                             let chmodStartInfo = ProcessStartInfo()
@@ -345,6 +435,18 @@ module ScriptService =
                             startInfo.CreateNoWindow <- true
                             startInfo.RedirectStandardOutput <- true
                             startInfo.RedirectStandardError <- true
+                            
+                            // Set environment variables to handle non-TTY execution
+                            startInfo.EnvironmentVariables.["TERM"] <- "xterm-256color"
+                            startInfo.EnvironmentVariables.["DEBIAN_FRONTEND"] <- "noninteractive"
+                            startInfo.EnvironmentVariables.["CI"] <- "true"
+                            startInfo.EnvironmentVariables.["HOMEBREW_NO_ENV_HINTS"] <- "1"
+                            startInfo.EnvironmentVariables.["HOMEBREW_NO_INSTALL_CLEANUP"] <- "1"
+                            startInfo.EnvironmentVariables.["HOMEBREW_NO_AUTO_UPDATE"] <- "1"
+                            startInfo.EnvironmentVariables.["NONINTERACTIVE"] <- "1"
+                            
+                            // Force scripts to run in non-interactive mode
+                            startInfo.EnvironmentVariables.["FORCE_NONINTERACTIVE"] <- "1"
 
                             let proc = Process.Start(startInfo)
 
@@ -454,6 +556,9 @@ module ScriptService =
                                             scriptContent
                                     else
                                         scriptContent
+                                
+                                // Preprocess the script for non-TTY execution
+                                let preprocessedScript = preprocessScriptForNonTTY finalScriptContent
 
                                 // Create a temporary file to execute the script
                                 let tempDir = Path.GetTempPath()
@@ -466,7 +571,7 @@ module ScriptService =
 
                                 try
                                     // Write script content to temporary file
-                                    File.WriteAllText(tempFilePath, finalScriptContent)
+                                    File.WriteAllText(tempFilePath, preprocessedScript)
 
                                     // Make the temporary file executable
                                     let chmodStartInfo = ProcessStartInfo()
@@ -488,6 +593,18 @@ module ScriptService =
                                     startInfo.CreateNoWindow <- true
                                     startInfo.RedirectStandardOutput <- true
                                     startInfo.RedirectStandardError <- true
+                                    
+                                    // Set environment variables to handle non-TTY execution
+                                    startInfo.EnvironmentVariables.["TERM"] <- "xterm-256color"
+                                    startInfo.EnvironmentVariables.["DEBIAN_FRONTEND"] <- "noninteractive"
+                                    startInfo.EnvironmentVariables.["CI"] <- "true"
+                                    startInfo.EnvironmentVariables.["HOMEBREW_NO_ENV_HINTS"] <- "1"
+                                    startInfo.EnvironmentVariables.["HOMEBREW_NO_INSTALL_CLEANUP"] <- "1"
+                                    startInfo.EnvironmentVariables.["HOMEBREW_NO_AUTO_UPDATE"] <- "1"
+                                    startInfo.EnvironmentVariables.["NONINTERACTIVE"] <- "1"
+                                    
+                                    // Force scripts to run in non-interactive mode
+                                    startInfo.EnvironmentVariables.["FORCE_NONINTERACTIVE"] <- "1"
 
                                     let proc = Process.Start(startInfo)
 
