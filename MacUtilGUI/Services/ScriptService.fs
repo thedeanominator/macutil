@@ -261,7 +261,7 @@ module ScriptService =
 
                             let osascriptCommand =
                                 sprintf
-                                    """osascript -e 'do shell script "\"%s\"" with administrator privileges'"""
+                                    """osascript -e 'do shell script "\"%s\"" with prompt \"MacUtil needs your permission to make changes to your computer\" with administrator privileges'"""
                                     escapedPath
 
                             let startInfo = ProcessStartInfo()
