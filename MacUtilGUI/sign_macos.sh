@@ -68,6 +68,20 @@ print_warning "IMPORTANT: Make sure you have:"
 print_warning "1. A valid Developer ID Application certificate in your Keychain"
 print_warning "2. Updated the DEVELOPER_ID variable in this script"
 print_warning "3. An Apple Developer account for notarization"
+print_warning "4. Set up AC_PASSWORD in keychain with:"
+print_warning "   security add-generic-password -a 'contact@christitus.com' -s 'AC_PASSWORD' -w"
+print_warning "   (it will prompt you to enter your app-specific password securely)"
+echo
+
+# Check if AC_PASSWORD is accessible in keychain
+print_status "Checking keychain access for AC_PASSWORD..."
+if security find-generic-password -a 'contact@christitus.com' -s 'AC_PASSWORD' >/dev/null 2>&1; then
+    print_success "AC_PASSWORD found in keychain"
+else
+    print_error "AC_PASSWORD not found in keychain or keychain is locked"
+    print_status "Please ensure the keychain is unlocked and AC_PASSWORD is stored"
+    print_status "You can test with: security find-generic-password -a 'contact@christitus.com' -s 'AC_PASSWORD'"
+fi
 echo
 
 read -p "Do you want to proceed with code signing? (y/N): " -n 1 -r
@@ -102,13 +116,88 @@ if [ $? -eq 0 ]; then
     if [ $? -eq 0 ]; then
         print_success "Signature verification passed!"
         echo
-        print_status "🎯 Next Steps for Distribution:"
-        echo "1. Test the signed app on a different Mac"
-        echo "2. For notarization (required for macOS 10.15+):"
-        echo "   a. Create a zip: ditto -c -k --sequesterRsrc --keepParent '$APP_BUNDLE_PATH' MacUtil.zip"
-        echo "   b. Submit for notarization: xcrun altool --notarize-app -f MacUtil.zip --primary-bundle-id com.macutil.gui -u your@apple.id -p @keychain:AC_PASSWORD"
-        echo "   c. Wait for notarization to complete"
-        echo "   d. Staple the notarization: xcrun stapler staple '$APP_BUNDLE_PATH'"
+        
+        # Ask if user wants to proceed with notarization
+        read -p "Do you want to proceed with notarization? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            print_status "Starting notarization process..."
+            
+            # Ensure keychain is unlocked
+            print_status "Ensuring keychain is unlocked..."
+            security unlock-keychain ~/Library/Keychains/login.keychain-db
+            
+            # Retrieve AC_PASSWORD from keychain (silently)
+            print_status "Retrieving app-specific password from keychain..."
+            AC_PASSWORD=$(security find-generic-password -a 'contact@christitus.com' -s 'AC_PASSWORD' -w 2>/dev/null)
+            if [ $? -ne 0 ] || [ -z "$AC_PASSWORD" ]; then
+                print_error "Failed to retrieve AC_PASSWORD from keychain"
+                print_status "Please ensure the keychain is unlocked and AC_PASSWORD is stored correctly"
+                exit 1
+            fi
+            print_success "App-specific password retrieved successfully"
+            
+            # Create zip for notarization
+            ZIP_NAME="MacUtil.zip"
+            print_status "Creating zip file for notarization: $ZIP_NAME"
+            if [ -f "$ZIP_NAME" ]; then
+                rm "$ZIP_NAME"
+            fi
+            ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE_PATH" "$ZIP_NAME"
+            
+            if [ $? -eq 0 ]; then
+                print_success "Zip file created successfully!"
+                
+                # Submit for notarization
+                print_status "Submitting for notarization (this may take several minutes)..."
+                print_status "You will see progress updates from Apple's notarization service..."
+                echo
+                
+                # Submit for notarization with real-time output
+                xcrun notarytool submit "$ZIP_NAME" --apple-id contact@christitus.com --team-id 8ZHX2A9ALF --password "$AC_PASSWORD" --wait
+                
+                if [ $? -eq 0 ]; then
+                    
+                    # Staple the notarization
+                    print_status "Stapling notarization to app bundle..."
+                    xcrun stapler staple "$APP_BUNDLE_PATH"
+                    
+                    if [ $? -eq 0 ]; then
+                        print_success "Notarization stapled successfully!"
+                        print_success "App is now ready for distribution! 🚀"
+                        echo
+                        print_status "Next steps:"
+                        echo "1. Test the notarized app on a different Mac"
+                        echo "2. Distribute the app bundle: $APP_BUNDLE_PATH"
+                    else
+                        print_error "Failed to staple notarization"
+                        print_status "The app is notarized but stapling failed. You can distribute it anyway."
+                    fi
+                else
+                    print_error "Notarization failed!"
+                    print_status "Check your Apple ID credentials and app-specific password"
+                    print_status "You can still distribute the signed app, but users may see security warnings"
+                fi
+                
+                # Clear the password variable for security
+                unset AC_PASSWORD
+                
+                # Clean up zip file
+                if [ -f "$ZIP_NAME" ]; then
+                    rm "$ZIP_NAME"
+                    print_status "Cleaned up temporary zip file"
+                fi
+            else
+                print_error "Failed to create zip file for notarization"
+            fi
+        else
+            print_status "Skipping notarization"
+            echo
+            print_status "🎯 Manual notarization steps (if needed later):"
+            echo "1. Create a zip: ditto -c -k --sequesterRsrc --keepParent '$APP_BUNDLE_PATH' MacUtil.zip"
+            echo "2. Submit for notarization: xcrun notarytool submit MacUtil.zip --apple-id contact@christitus.com --team-id 8ZHX2A9ALF --password \$(security find-generic-password -a 'contact@christitus.com' -s 'AC_PASSWORD' -w) --wait"
+            echo "3. If successful, staple: xcrun stapler staple '$APP_BUNDLE_PATH'"
+        fi
         echo
         print_success "Code signing complete! 🔐"
     else
