@@ -69,8 +69,8 @@ module ScriptService =
 export TERM=${TERM:-xterm-256color}
 export DEBIAN_FRONTEND=noninteractive
 export CI=true
-export NONINTERACTIVE=1
-export FORCE_NONINTERACTIVE=1
+export NONINTERACTIVE=0
+export FORCE_NONINTERACTIVE=0
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
 export HOMEBREW_NO_AUTO_UPDATE=1
@@ -110,11 +110,8 @@ set +m        # Disable job control
 
     // Function to check if a script needs elevation (contains sudo, $ESCALATION_TOOL, etc.)
     let needsElevation (scriptContent: string) : bool =
-        scriptContent.Contains("sudo ")
-        || scriptContent.Contains("$ESCALATION_TOOL")
+        scriptContent.Contains("$ESCALATION_TOOL")
         || scriptContent.Contains("${ESCALATION_TOOL}")
-        || scriptContent.Contains("/usr/bin/sudo")
-        || scriptContent.Contains("/bin/sudo")
 
     let getEmbeddedResource (resourcePath: string) : string option =
         try
@@ -362,8 +359,8 @@ set +m        # Disable job control
                                 "export TERM=xterm-256color\n" +
                                 "export DEBIAN_FRONTEND=noninteractive\n" +
                                 "export CI=true\n" +
-                                "export NONINTERACTIVE=1\n" +
-                                "export FORCE_NONINTERACTIVE=1\n" +
+                                "export NONINTERACTIVE=0\n" +
+                                "export FORCE_NONINTERACTIVE=0\n" +
                                 "export HOMEBREW_NO_ENV_HINTS=1\n" +
                                 "export HOMEBREW_NO_INSTALL_CLEANUP=1\n" +
                                 "export HOMEBREW_NO_AUTO_UPDATE=1\n" +
