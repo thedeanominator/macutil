@@ -18,3 +18,7 @@ installThunderBird() {
 
 checkEnv
 installThunderBird
+
+https://www.betterbird.eu/downloads/get.php?os=mac-arm64&lang=en-US&version=release
+Need to adjust this script so it downloads the file from the above url and installs it somehow
+Need to see if there is a CLI tool that can install an app using CLI
