@@ -2,6 +2,10 @@
 
 . ../../common-script.sh
 
+# Note that this browser is still in active development
+# Previous attempts in using it led to some memory usage issues
+# Ideally would not use this in its current state
+
 installZenBrowser() {
     if ! brewprogram_exists zen; then
         printf "%b\n" "${YELLOW}Installing Zen Browser...${RC}"
