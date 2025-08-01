@@ -39,9 +39,10 @@ fixfinder () {
     printf "%b\n" "${CYAN}Showing all filename extensions in Finder...${RC}"
     $ESCALATION_TOOL defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 
+    # I assume that the sidebar is referring to the Dock, I prefer to keep it the way it is
     # Set the sidebar icon size to small
-    printf "%b\n" "${CYAN}Setting sidebar icon size to small...${RC}"
-    $ESCALATION_TOOL defaults write NSGlobalDomain NSTableViewDefaultSizeMode -int 1
+    # printf "%b\n" "${CYAN}Setting sidebar icon size to small...${RC}"
+    # $ESCALATION_TOOL defaults write NSGlobalDomain NSTableViewDefaultSizeMode -int 1
 
     # Show status bar in Finder
     printf "%b\n" "${CYAN}Showing status bar in Finder...${RC}"
